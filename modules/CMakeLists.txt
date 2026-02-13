@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.23)
 
 find_package(OpenCV 4 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(MLPACK REQUIRED)
+find_package(Armadillo REQUIRED)
+find_package(cereal REQUIRED)
+find_package(ensmallen REQUIRED)
+find_package(mlpack REQUIRED)
 find_package(Pangolin REQUIRED)
 
 set(LIBRARY_NAME NR-SLAM)
@@ -17,6 +20,7 @@ set(HEADER_FILES
         ${root}/datasets/endomapper.h
         ${root}/datasets/hamlyn.h
         ${root}/datasets/simulation.h
+        ${root}/datasets/andromeda.h
         ${root}/features/feature.h
         ${root}/features/shi_tomasi.h
         ${root}/map/frame.h
@@ -30,6 +34,7 @@ set(HEADER_FILES
         ${root}/masking/border_filter.h
         ${root}/masking/masker.h
         ${root}/masking/predefined_filter.h
+        ${root}/masking/circle_filter.h
         ${root}/matching/lucas_kanade_tracker.h
         ${root}/optimization/g2o_optimization.h
         ${root}/optimization/landmark_vertex.h
@@ -68,6 +73,7 @@ set(SOURCE_FILES
         ${root}/datasets/endomapper.cc
         ${root}/datasets/hamlyn.cc
         ${root}/datasets/simulation.cc
+        ${root}/datasets/andromeda.cc
         ${root}/features/shi_tomasi.cc
         ${root}/map/frame.cc
         ${root}/map/keyframe.cc
@@ -80,6 +86,7 @@ set(SOURCE_FILES
         ${root}/masking/border_filter.cc
         ${root}/masking/masker.cc
         ${root}/masking/predefined_filter.cc
+        ${root}/masking/circle_filter.cc
         ${root}/matching/lucas_kanade_tracker.cc
         ${root}/optimization/g2o_optimization.cc
         ${root}/optimization/landmark_vertex.cc
@@ -121,6 +128,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_SOURCE_DIR}/third_party/Sophus
         ${CMAKE_SOURCE_DIR}/third_party/g2o
         ${Pangolin_INCLUDE_DIRS}
+        ${ARMADILLO_INCLUDE_DIRS}
+        ${CEREAL_INCLUDE_DIR}
+        ${ENSMALLEN_INCLUDE_DIR}
         ${MLPACK_INCLUDE_DIRS}
         )
 
@@ -147,8 +157,7 @@ target_link_libraries(${LIBRARY_NAME}
         ${Boost_LIBRARIES}
         fmt
         ${Pangolin_LIBRARIES}
-        ${MLPACK_LIBRARIES}
-        armadillo
+        ${ARMADILLO_LIBRARIES}
         ${CMAKE_SOURCE_DIR}/third_party/g2o/lib/libg2o_core.so
         ${CMAKE_SOURCE_DIR}/third_party/g2o/lib/libg2o_stuff.so
         ${CMAKE_SOURCE_DIR}/third_party/g2o/lib/libg2o_types_sba.so

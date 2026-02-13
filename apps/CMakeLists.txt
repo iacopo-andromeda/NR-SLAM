@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_BINARY_DIR}
         ${DefSLAM_LIB_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/third_party/Sophus
         )
 
 set(PROGRAM_NAME hamlyn)
@@ -20,4 +21,8 @@ target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags a
 
 set(PROGRAM_NAME simulation)
 add_executable(${PROGRAM_NAME} simulation.cc)
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status NR-SLAM)
+
+set(PROGRAM_NAME andromeda)
+add_executable(${PROGRAM_NAME} andromeda.cc)
 target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status NR-SLAM)

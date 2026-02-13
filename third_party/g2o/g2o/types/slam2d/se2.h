@@ -27,6 +27,7 @@
 #ifndef G2O_SE2_H_
 #define G2O_SE2_H_
 
+#include <cassert>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 

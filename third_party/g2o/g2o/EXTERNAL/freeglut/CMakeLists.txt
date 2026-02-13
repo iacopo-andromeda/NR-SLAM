@@ -4,7 +4,7 @@ add_library(freeglut_minimal ${G2O_LIB_TYPE}
   freeglut_stroke_roman.cpp
 )
 
-target_link_libraries(freeglut_minimal PUBLIC ${G2O_OPENGL_TARGET})
+target_link_libraries(freeglut_minimal PUBLIC ${G2O_OPENGL_TARGET} ${G2O_EIGEN3_EIGEN_TARGET})
 
 set_target_properties(freeglut_minimal PROPERTIES OUTPUT_NAME ${LIB_PREFIX}ext_freeglut_minimal)
 if (APPLE)

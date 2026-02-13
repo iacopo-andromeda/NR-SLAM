@@ -21,6 +21,7 @@
 #include "border_filter.h"
 #include "bright_filter.h"
 #include "predefined_filter.h"
+#include "circle_filter.h"
 
 #include "absl/log/log.h"
 
@@ -61,6 +62,15 @@ void Masker::loadFromTxt(std::string path){
                 ss >> path;
                 std::unique_ptr<Filter> f(new PredefinedFilter(path));
                 addFilter(f);
+            }
+            else if (name == "CircleFilter"){
+                std::string cx, cy, r;
+                ss >> cx >> cy >> r;
+                std::unique_ptr<Filter> f(new CircleFilter(stoi(cx), stoi(cy), stoi(r)));
+                addFilter(f);
+            }
+            else{
+                LOG(WARNING) << "Unknown filter name: " << name;
             }
         }
 

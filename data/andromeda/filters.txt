@@ -1,0 +1,2 @@
+BrightFilter 225
+CircleFilter 320 180 85

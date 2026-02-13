@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <numeric>
 
 #include "absl/strings/string_view.h"
