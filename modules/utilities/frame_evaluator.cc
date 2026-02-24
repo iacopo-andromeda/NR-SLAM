@@ -18,14 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "frame_evaluator.h"
+#include "utilities/frame_evaluator.h"
 
 #include <fstream>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "geometry_toolbox.h"
-#include "statistics_toolbox.h"
+#include "utilities/geometry_toolbox.h"
+#include "utilities/statistics_toolbox.h"
 
 using namespace std;
 

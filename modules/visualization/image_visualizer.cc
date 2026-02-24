@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "image_visualizer.h"
+#include "visualization/image_visualizer.h"
 
 #include "absl/log/log.h"
 

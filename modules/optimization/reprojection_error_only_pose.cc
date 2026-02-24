@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "reprojection_error_only_pose.h"
+#include "optimization/reprojection_error_only_pose.h"
 
 ReprojectionErrorOnlyPose::ReprojectionErrorOnlyPose() {}
 

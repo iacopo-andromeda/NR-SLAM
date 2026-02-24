@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hamlyn.h"
+#include "datasets/hamlyn.h"
 
 #include <sys/stat.h>
 

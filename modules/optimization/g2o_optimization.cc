@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "g2o_optimization.h"
+#include "optimization/g2o_optimization.h"
 
 #include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"

@@ -24,7 +24,7 @@
 #include "calibration/camera_model.h"
 #include "g2o/core/base_binary_edge.h"
 #include "g2o/types/sba/vertex_se3_expmap.h"
-#include "landmark_vertex.h"
+#include "optimization/landmark_vertex.h"
 
 class ReprojectionError
     : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSE3Expmap,

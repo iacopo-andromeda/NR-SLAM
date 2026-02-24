@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "pin_hole.h"
+#include "calibration/pin_hole.h"
 
 #define fx calibration_parameters_[0]
 #define fy calibration_parameters_[1]

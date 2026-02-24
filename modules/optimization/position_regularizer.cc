@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "position_regularizer.h"
+#include "optimization/position_regularizer.h"
 
 PositionRegularizer::PositionRegularizer() {}
 

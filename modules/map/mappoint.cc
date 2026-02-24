@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "mappoint.h"
+#include "map/mappoint.h"
 
 using namespace std;
 

@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "color_factory.h"
+#include "visualization/color_factory.h"
 
 using namespace std;
 

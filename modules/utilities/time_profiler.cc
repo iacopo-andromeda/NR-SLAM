@@ -18,13 +18,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "time_profiler.h"
+#include "utilities/time_profiler.h"
 
 #include <fstream>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "statistics_toolbox.h"
+#include "utilities/statistics_toolbox.h"
 
 void TimeProfiler::Tic(std::string identifier) {
   initial_measurements_[identifier] = std::chrono::steady_clock::now();

@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lucas_kanade_tracker.h"
+#include "matching/lucas_kanade_tracker.h"
 
 #include <float.h>
 

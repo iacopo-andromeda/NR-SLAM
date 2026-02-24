@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "position_regularizer_with_deformation.h"
+#include "optimization/position_regularizer_with_deformation.h"
 
 PositionRegularizerWithDeformation::PositionRegularizerWithDeformation() {}
 

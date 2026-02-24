@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "settings.h"
+#include "SLAM/settings.h"
 
 #include "absl/log/log.h"
 #include "calibration/kannala_brandt_8.h"

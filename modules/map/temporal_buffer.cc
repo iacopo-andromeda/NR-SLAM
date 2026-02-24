@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "temporal_buffer.h"
+#include "map/temporal_buffer.h"
 
 #include "absl/log/log.h"
 

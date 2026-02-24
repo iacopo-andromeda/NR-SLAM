@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "masker.h"
+#include "masking/masker.h"
 
 #include <fstream>
 #include <iostream>
@@ -26,10 +26,10 @@
 #include <opencv2/imgproc.hpp>
 
 #include "absl/log/log.h"
-#include "border_filter.h"
-#include "bright_filter.h"
-#include "circle_filter.h"
-#include "predefined_filter.h"
+#include "masking/border_filter.h"
+#include "masking/bright_filter.h"
+#include "masking/circle_filter.h"
+#include "masking/predefined_filter.h"
 
 void Masker::loadFromTxt(std::string path) {
   LOG(INFO) << "Loading filters: " << path;

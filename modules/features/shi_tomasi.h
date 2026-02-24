@@ -24,7 +24,7 @@
 #include <fstream>
 #include <opencv2/core/core.hpp>
 
-#include "feature.h"
+#include "features/feature.h"
 #include "opencv2/opencv.hpp"
 
 class ShiTomasi : public Feature {

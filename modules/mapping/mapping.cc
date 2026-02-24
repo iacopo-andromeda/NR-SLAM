@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "mapping.h"
+#include "mapping/mapping.h"
 
 #include <fstream>
 

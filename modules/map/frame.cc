@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "frame.h"
+#include "map/frame.h"
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"

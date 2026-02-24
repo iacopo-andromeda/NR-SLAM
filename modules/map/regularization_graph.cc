@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "regularization_graph.h"
+#include "map/regularization_graph.h"
 
 #include "absl/log/log.h"
 #include "utilities/geometry_toolbox.h"
