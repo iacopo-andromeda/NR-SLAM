@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,41 +20,41 @@
 
 #include "spatial_regularizer.h"
 
-SpatialRegularizer::SpatialRegularizer(){};
+SpatialRegularizer::SpatialRegularizer() {};
 
-bool SpatialRegularizer::read(std::istream& is){
-    return true;
-};
+bool SpatialRegularizer::read(std::istream& is) { return true; };
 
-bool SpatialRegularizer::write(std::ostream& os) const{
-    return true;
-};
+bool SpatialRegularizer::write(std::ostream& os) const { return true; };
 
 void SpatialRegularizer::computeError() {
-    const LandmarkVertex* vertex_point_1_current = static_cast<const LandmarkVertex*>(_vertices[0]);
-    const LandmarkVertex* vertex_point_2_current = static_cast<const LandmarkVertex*>(_vertices[1]);
+  const LandmarkVertex* vertex_point_1_current =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
+  const LandmarkVertex* vertex_point_2_current =
+      static_cast<const LandmarkVertex*>(_vertices[1]);
 
-    const LandmarkVertex* vertex_point_1_next = static_cast<const LandmarkVertex*>(_vertices[2]);
-    const LandmarkVertex* vertex_point_2_next = static_cast<const LandmarkVertex*>(_vertices[3]);
+  const LandmarkVertex* vertex_point_1_next =
+      static_cast<const LandmarkVertex*>(_vertices[2]);
+  const LandmarkVertex* vertex_point_2_next =
+      static_cast<const LandmarkVertex*>(_vertices[3]);
 
-    Eigen::Vector3d point_1_current = vertex_point_1_current->estimate();
-    Eigen::Vector3d point_2_current = vertex_point_2_current->estimate();
+  Eigen::Vector3d point_1_current = vertex_point_1_current->estimate();
+  Eigen::Vector3d point_2_current = vertex_point_2_current->estimate();
 
-    Eigen::Vector3d point_1_next = vertex_point_1_next->estimate();
-    Eigen::Vector3d point_2_next = vertex_point_2_next->estimate();
+  Eigen::Vector3d point_1_next = vertex_point_1_next->estimate();
+  Eigen::Vector3d point_2_next = vertex_point_2_next->estimate();
 
-    _error = weight_ * ((point_1_next - point_1_current) -
-            (point_2_next - point_2_current));
+  _error = weight_ * ((point_1_next - point_1_current) -
+                      (point_2_next - point_2_current));
 }
 
 void SpatialRegularizer::linearizeOplus() {
-    auto& jacobian_wrt_x_1_current = std::get<0>(this->_jacobianOplus);
-    auto& jacobian_wrt_x_2_current = std::get<1>(this->_jacobianOplus);
-    auto& jacobian_wrt_x_1_next = std::get<2>(this->_jacobianOplus);
-    auto& jacobian_wrt_x_2_next = std::get<3>(this->_jacobianOplus);
+  auto& jacobian_wrt_x_1_current = std::get<0>(this->_jacobianOplus);
+  auto& jacobian_wrt_x_2_current = std::get<1>(this->_jacobianOplus);
+  auto& jacobian_wrt_x_1_next = std::get<2>(this->_jacobianOplus);
+  auto& jacobian_wrt_x_2_next = std::get<3>(this->_jacobianOplus);
 
-    jacobian_wrt_x_1_current = -weight_ * Eigen::Matrix<double,3,3>::Identity();
-    jacobian_wrt_x_2_current = weight_ * Eigen::Matrix<double,3,3>::Identity();
-    jacobian_wrt_x_1_next = weight_ * Eigen::Matrix<double,3,3>::Identity();
-    jacobian_wrt_x_2_next = -weight_ * Eigen::Matrix<double,3,3>::Identity();
+  jacobian_wrt_x_1_current = -weight_ * Eigen::Matrix<double, 3, 3>::Identity();
+  jacobian_wrt_x_2_current = weight_ * Eigen::Matrix<double, 3, 3>::Identity();
+  jacobian_wrt_x_1_next = weight_ * Eigen::Matrix<double, 3, 3>::Identity();
+  jacobian_wrt_x_2_next = -weight_ * Eigen::Matrix<double, 3, 3>::Identity();
 }

@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,18 +24,17 @@
 #include "g2o/core/base_vertex.h"
 
 class LandmarkVertex : public g2o::BaseVertex<3, Eigen::Vector3d> {
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    LandmarkVertex();
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  LandmarkVertex();
 
-    bool read(std::istream& is);
+  bool read(std::istream& is);
 
-    bool write(std::ostream& os) const;
+  bool write(std::ostream& os) const;
 
-    void setToOriginImpl();
+  void setToOriginImpl();
 
-    void oplusImpl(const double * update);
+  void oplusImpl(const double* update);
 };
 
-
-#endif //NRSLAM_LANDMARK_VERTEX_H
+#endif  // NRSLAM_LANDMARK_VERTEX_H

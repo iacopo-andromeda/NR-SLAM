@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,21 +21,21 @@
 #ifndef NRSLAM_FEATURE_H
 #define NRSLAM_FEATURE_H
 
+#include <opencv2/opencv.hpp>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
+class Feature {
+ public:
+  Feature() {};
 
-class Feature{
-public:
-    Feature(){};
+  /*
+   * Computes KeyPoints in the given image. To be implemented by the children
+   * classes
+   */
+  virtual void Extract(const cv::Mat& im,
+                       std::vector<cv::KeyPoint>& keypoints) = 0;
 
-    /*
-     * Computes KeyPoints in the given image. To be implemented by the children classes
-     */
-    virtual void Extract(const cv::Mat& im, std::vector<cv::KeyPoint>& keypoints) = 0;
-
-private:
+ private:
 };
 
-
-#endif //NRSLAM_FEATURE_H
+#endif  // NRSLAM_FEATURE_H

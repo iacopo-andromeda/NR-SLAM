@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,26 +22,25 @@
 #define NRSLAM_REPROJECTION_ERROR_ONLY_DEFORMATION_H
 
 #include "calibration/camera_model.h"
+#include "g2o/core/base_unary_edge.h"
 #include "optimization/landmark_vertex.h"
 
-#include "g2o/core/base_unary_edge.h"
+class ReprojectionErrorOnlyDeformation
+    : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, LandmarkVertex> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-class ReprojectionErrorOnlyDeformation : public g2o::BaseUnaryEdge<2,Eigen::Vector2d, LandmarkVertex> {
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ReprojectionErrorOnlyDeformation();
 
-    ReprojectionErrorOnlyDeformation();
+  bool read(std::istream& is);
 
-    bool read(std::istream& is);
+  bool write(std::ostream& os) const;
 
-    bool write(std::ostream& os) const;
+  void computeError();
 
-    void computeError();
+  // virtual void linearizeOplus();
 
-    //virtual void linearizeOplus();
-
-    std::shared_ptr<CameraModel> calibration_;
+  std::shared_ptr<CameraModel> calibration_;
 };
 
-
-#endif //NRSLAM_REPROJECTION_ERROR_ONLY_DEFORMATION_H
+#endif  // NRSLAM_REPROJECTION_ERROR_ONLY_DEFORMATION_H

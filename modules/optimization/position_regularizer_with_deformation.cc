@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,38 +21,44 @@
 
 PositionRegularizerWithDeformation::PositionRegularizerWithDeformation() {}
 
-bool PositionRegularizerWithDeformation::read(std::istream& is) {
-    return true;
-}
+bool PositionRegularizerWithDeformation::read(std::istream& is) { return true; }
 
 bool PositionRegularizerWithDeformation::write(std::ostream& os) const {
-    return true;
+  return true;
 }
 
 void PositionRegularizerWithDeformation::computeError() {
-    const LandmarkVertex* vertex_flow_1 = static_cast<const LandmarkVertex*>(_vertices[0]);
-    const LandmarkVertex* vertex_flow_2 = static_cast<const LandmarkVertex*>(_vertices[1]);
+  const LandmarkVertex* vertex_flow_1 =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
+  const LandmarkVertex* vertex_flow_2 =
+      static_cast<const LandmarkVertex*>(_vertices[1]);
 
-    Eigen::Vector3d current_position_1 = rest_position_1_ + vertex_flow_1->estimate();
-    Eigen::Vector3d current_position_2 = rest_position_2_ + vertex_flow_2->estimate();
+  Eigen::Vector3d current_position_1 =
+      rest_position_1_ + vertex_flow_1->estimate();
+  Eigen::Vector3d current_position_2 =
+      rest_position_2_ + vertex_flow_2->estimate();
 
-    double current_distance = (current_position_1 - current_position_2).norm();
+  double current_distance = (current_position_1 - current_position_2).norm();
 
-    _error(0) = k_ * (current_distance - _measurement) / _measurement;
+  _error(0) = k_ * (current_distance - _measurement) / _measurement;
 }
 
 void PositionRegularizerWithDeformation::linearizeOplus() {
-    const LandmarkVertex* vertex_flow_1 = static_cast<const LandmarkVertex*>(_vertices[0]);
-    const LandmarkVertex* vertex_flow_2 = static_cast<const LandmarkVertex*>(_vertices[1]);
+  const LandmarkVertex* vertex_flow_1 =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
+  const LandmarkVertex* vertex_flow_2 =
+      static_cast<const LandmarkVertex*>(_vertices[1]);
 
-    Eigen::Vector3d current_position_1 = rest_position_1_ + vertex_flow_1->estimate();
-    Eigen::Vector3d current_position_2 = rest_position_2_ + vertex_flow_2->estimate();
+  Eigen::Vector3d current_position_1 =
+      rest_position_1_ + vertex_flow_1->estimate();
+  Eigen::Vector3d current_position_2 =
+      rest_position_2_ + vertex_flow_2->estimate();
 
-    double current_distance = (current_position_1 - current_position_2).norm();
+  double current_distance = (current_position_1 - current_position_2).norm();
 
-    double a = k_ / (2 * _measurement * current_distance);
-    Eigen::Vector3d v = 2 * current_position_1 - 2 * current_position_2;
+  double a = k_ / (2 * _measurement * current_distance);
+  Eigen::Vector3d v = 2 * current_position_1 - 2 * current_position_2;
 
-    _jacobianOplusXi = a * v.transpose();
-    _jacobianOplusXj = -a * v.transpose();
+  _jacobianOplusXi = a * v.transpose();
+  _jacobianOplusXj = -a * v.transpose();
 }

@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -22,36 +23,36 @@
 #include <sys/stat.h>
 
 #include <boost/filesystem.hpp>
-#include <fstream>
-#include "absl/log/log.h"
 #include <filesystem>
+#include <fstream>
+
+#include "absl/log/log.h"
 
 using namespace std;
 
-Andromeda::Andromeda(const std::string &image_directory) {
+Andromeda::Andromeda(const std::string& image_directory) {
+  auto path = std::filesystem::path(image_directory);
 
-    auto path = std::filesystem::path(image_directory);
-
-    // Ensure names are sorted
-    std::map<std::string, std::string> names_map;
-    for(const auto& entry : std::filesystem::recursive_directory_iterator(path)){
-        if(entry.path().extension() == ".png"){
-            names_map[entry.path().filename().string()] = entry.path().string();
-        }
+  // Ensure names are sorted
+  std::map<std::string, std::string> names_map;
+  for (const auto& entry :
+       std::filesystem::recursive_directory_iterator(path)) {
+    if (entry.path().extension() == ".png") {
+      names_map[entry.path().filename().string()] = entry.path().string();
     }
+  }
 
-    // Save names in vector
-    images_names_.clear();
-    for(const auto& name : names_map){
-        images_names_.push_back(name.second);
-    }
-
+  // Save names in vector
+  images_names_.clear();
+  for (const auto& name : names_map) {
+    images_names_.push_back(name.second);
+  }
 }
 
 absl::StatusOr<cv::Mat> Andromeda::GetImage(const int idx) {
-    if (idx >= images_names_.size()) {
-        return absl::InternalError("Image index out boundaries.");
-    }
+  if (idx >= images_names_.size()) {
+    return absl::InternalError("Image index out boundaries.");
+  }
 
-    return cv::imread(images_names_[idx], cv::IMREAD_UNCHANGED);
+  return cv::imread(images_names_[idx], cv::IMREAD_UNCHANGED);
 }

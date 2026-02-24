@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,28 +21,27 @@
 #ifndef NRSLAM_SPATIAL_REGULARIZER_FIXED_H
 #define NRSLAM_SPATIAL_REGULARIZER_FIXED_H
 
+#include "g2o/core/base_unary_edge.h"
 #include "optimization/landmark_vertex.h"
 
-#include "g2o/core/base_unary_edge.h"
+class SpatialRegularizerFixed
+    : public g2o::BaseUnaryEdge<3, Eigen::Vector3d, LandmarkVertex> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-class SpatialRegularizerFixed: public g2o::BaseUnaryEdge<3, Eigen::Vector3d, LandmarkVertex>{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  SpatialRegularizerFixed();
 
-    SpatialRegularizerFixed();
+  bool read(std::istream& is);
 
-    bool read(std::istream& is);
+  bool write(std::ostream& os) const;
 
-    bool write(std::ostream& os) const;
+  void computeError();
 
-    void computeError();
+  virtual void linearizeOplus();
 
-    virtual void linearizeOplus();
-
-    LandmarkVertex* flow_fixed;
-    double weight_;
-    long unsigned int id1, id2;
+  LandmarkVertex* flow_fixed;
+  double weight_;
+  long unsigned int id1, id2;
 };
 
-
-#endif //NRSLAM_SPATIAL_REGULARIZER_FIXED_H
+#endif  // NRSLAM_SPATIAL_REGULARIZER_FIXED_H

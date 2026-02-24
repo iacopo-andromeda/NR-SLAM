@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,48 +21,47 @@
 #ifndef NRSLAM_MASKER_H
 #define NRSLAM_MASKER_H
 
+#include "absl/container/flat_hash_map.h"
 #include "filter.h"
 
-#include "absl/container/flat_hash_map.h"
-
 /*
- * This class collects a set of filter to generate a global mask from all of them
+ * This class collects a set of filter to generate a global mask from all of
+ * them
  */
 
 class Masker {
-public:
-    Masker(){};
+ public:
+  Masker() {};
 
-    /*
-     * Load filters from a .txt file with the following format:
-     * <filterName> <param_1> <param_2>
-     */
-    void loadFromTxt(std::string path);
+  /*
+   * Load filters from a .txt file with the following format:
+   * <filterName> <param_1> <param_2>
+   */
+  void loadFromTxt(std::string path);
 
-    /*
-     * Adds a filter to the masker
-     */
-    void addFilter(std::unique_ptr<Filter>& f);
+  /*
+   * Adds a filter to the masker
+   */
+  void addFilter(std::unique_ptr<Filter>& f);
 
-    /*
-     * Removes the filter at pos idx
-     */
-    void deleteFilter(size_t idx);
+  /*
+   * Removes the filter at pos idx
+   */
+  void deleteFilter(size_t idx);
 
-    /*
-     * Applies all filters stored and generates a global mask
-     */
-    cv::Mat mask(const cv::Mat& im);
+  /*
+   * Applies all filters stored and generates a global mask
+   */
+  cv::Mat mask(const cv::Mat& im);
 
-    // Applies all filters and returns all the masked generated and the global
-    // obtained from applying all of them at the same time.
-    absl::flat_hash_map<std::string, cv::Mat> GetAllMasks(const cv::Mat& im);
+  // Applies all filters and returns all the masked generated and the global
+  // obtained from applying all of them at the same time.
+  absl::flat_hash_map<std::string, cv::Mat> GetAllMasks(const cv::Mat& im);
 
-    std::string printFilters();
+  std::string printFilters();
 
-private:
-    std::vector<std::unique_ptr<Filter>> filters_;
+ private:
+  std::vector<std::unique_ptr<Filter>> filters_;
 };
 
-
-#endif //NRSLAM_MASKER_H
+#endif  // NRSLAM_MASKER_H

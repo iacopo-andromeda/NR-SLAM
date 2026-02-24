@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,37 +21,35 @@
 #ifndef NRSLAM_STEREO_LUCAS_KANADE_H
 #define NRSLAM_STEREO_LUCAS_KANADE_H
 
+#include "absl/status/statusor.h"
 #include "calibration/camera_model.h"
 #include "matching/lucas_kanade_tracker.h"
 #include "stereo/stereo_matcher.h"
 
-#include "absl/status/statusor.h"
-
 class StereoLucasKanade : public StereoMatcher {
-public:
-    struct Options {
-        int klt_window_size = 21;
-        int klt_max_level = 3;
-        int klt_max_iters = 50;
-        float klt_epsilon = 0.01;
-        float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.7;
-    };
+ public:
+  struct Options {
+    int klt_window_size = 21;
+    int klt_max_level = 3;
+    int klt_max_iters = 50;
+    float klt_epsilon = 0.01;
+    float klt_min_eig_th = 1e-4;
+    float klt_min_SSIM = 0.7;
+  };
 
-    StereoLucasKanade() = delete;
+  StereoLucasKanade() = delete;
 
-    StereoLucasKanade(Options& options, std::shared_ptr<CameraModel> calibration, float baseline);
+  StereoLucasKanade(Options& options, std::shared_ptr<CameraModel> calibration,
+                    float baseline);
 
-    virtual std::vector<absl::StatusOr<Eigen::Vector3f>> ComputeStereo3D(
-            const std::vector<cv::KeyPoint> &keypoints,
-            const cv::Mat &im_left,
-            const cv::Mat &im_right);
+  virtual std::vector<absl::StatusOr<Eigen::Vector3f>> ComputeStereo3D(
+      const std::vector<cv::KeyPoint>& keypoints, const cv::Mat& im_left,
+      const cv::Mat& im_right);
 
-private:
-    Options options_;
+ private:
+  Options options_;
 
-    LucasKanadeTracker klt_tracker_;
+  LucasKanadeTracker klt_tracker_;
 };
 
-
-#endif //NRSLAM_STEREO_LUCAS_KANADE_H
+#endif  // NRSLAM_STEREO_LUCAS_KANADE_H

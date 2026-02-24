@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,22 +24,20 @@
 #include "masking/filter.h"
 
 /*
-* This class defines a mask over the brightest pixel on an image. Pixels masked out must
-* have a value grater than th_
-*/
+ * This class defines a mask over the brightest pixel on an image. Pixels masked
+ * out must have a value grater than th_
+ */
 
 class BrightFilter : public Filter {
-public:
-    BrightFilter(int th) : th_(th) {
-        filter_name_ = "BrightFilter";
-    }
+ public:
+  BrightFilter(int th) : th_(th) { filter_name_ = "BrightFilter"; }
 
-    cv::Mat generateMask(const cv::Mat& im);
+  cv::Mat generateMask(const cv::Mat& im);
 
-    std::string getDescription();
-private:
-    int th_;
+  std::string getDescription();
+
+ private:
+  int th_;
 };
 
-
-#endif //NRSLAM_BRIGHTFILTER_H
+#endif  // NRSLAM_BRIGHTFILTER_H

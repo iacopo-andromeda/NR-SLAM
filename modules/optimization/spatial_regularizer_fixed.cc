@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,25 +20,22 @@
 
 #include "spatial_regularizer_fixed.h"
 
-SpatialRegularizerFixed::SpatialRegularizerFixed(){};
+SpatialRegularizerFixed::SpatialRegularizerFixed() {};
 
-bool SpatialRegularizerFixed::read(std::istream& is){
-    return true;
-}
+bool SpatialRegularizerFixed::read(std::istream& is) { return true; }
 
-bool SpatialRegularizerFixed::write(std::ostream& os) const {
-    return true;
-}
+bool SpatialRegularizerFixed::write(std::ostream& os) const { return true; }
 
 void SpatialRegularizerFixed::computeError() {
-    const LandmarkVertex* vertex_flow = static_cast<const LandmarkVertex*>(_vertices[0]);
+  const LandmarkVertex* vertex_flow =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
 
-    Eigen::Vector3d flow_1 = vertex_flow->estimate();
-    Eigen::Vector3d flow_2 = flow_fixed->estimate();
+  Eigen::Vector3d flow_1 = vertex_flow->estimate();
+  Eigen::Vector3d flow_2 = flow_fixed->estimate();
 
-    _error = weight_ * (flow_1 - flow_2);
+  _error = weight_ * (flow_1 - flow_2);
 }
 
 void SpatialRegularizerFixed::linearizeOplus() {
-    _jacobianOplusXi = weight_ * Eigen::Matrix3d::Identity();
+  _jacobianOplusXi = weight_ * Eigen::Matrix3d::Identity();
 }

@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -32,5 +33,4 @@ float Sigma(const std::vector<float>& data);
 
 float ChiSquared(const int degrees_of_freedom, const float alpha);
 
-
-#endif //NRSLAM_STATISTICS_TOOLBOX_H
+#endif  // NRSLAM_STATISTICS_TOOLBOX_H

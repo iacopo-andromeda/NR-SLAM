@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,37 +25,37 @@
 #include "utilities/time_profiler.h"
 
 class Mapping {
-public:
-    struct Options {
-        float rad_per_pixel;
-    };
+ public:
+  struct Options {
+    float rad_per_pixel;
+  };
 
-    Mapping() = delete;
+  Mapping() = delete;
 
-    Mapping(std::shared_ptr<Map> map, std::shared_ptr<CameraModel> calibration,
-            const Options options, TimeProfiler* time_profiler);
+  Mapping(std::shared_ptr<Map> map, std::shared_ptr<CameraModel> calibration,
+          const Options options, TimeProfiler* time_profiler);
 
-    void DoMapping();
+  void DoMapping();
 
-private:
-    void KeyFrameMapping();
+ private:
+  void KeyFrameMapping();
 
-    void UpdateTrackingFrameFromKeyFrame(std::shared_ptr<KeyFrame> keyframe);
+  void UpdateTrackingFrameFromKeyFrame(std::shared_ptr<KeyFrame> keyframe);
 
-    void FrameMapping();
+  void FrameMapping();
 
-    void LandmarkTriangulation();
+  void LandmarkTriangulation();
 
-    absl::StatusOr<Eigen::Vector3f> DeformableLandmarkTriangulation(const int candidate_id);
+  absl::StatusOr<Eigen::Vector3f> DeformableLandmarkTriangulation(
+      const int candidate_id);
 
-    std::shared_ptr<Map> map_;
+  std::shared_ptr<Map> map_;
 
-    std::shared_ptr<CameraModel> calibration_;
+  std::shared_ptr<CameraModel> calibration_;
 
-    TimeProfiler* time_profiler_;
+  TimeProfiler* time_profiler_;
 
-    Options options_;
+  Options options_;
 };
 
-
-#endif //NRSLAM_MAPPING_H
+#endif  // NRSLAM_MAPPING_H

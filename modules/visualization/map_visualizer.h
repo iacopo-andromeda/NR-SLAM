@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,84 +21,88 @@
 #ifndef NRSLAM_MAP_VISUALIZER_H
 #define NRSLAM_MAP_VISUALIZER_H
 
-#include "map/map.h"
-
 #include <pangolin/pangolin.h>
 
 #include <memory>
 #include <sophus/se3.hpp>
 
+#include "map/map.h"
+
 class MapVisualizer {
-public:
-    struct Options {
-        Eigen::Matrix4f initial_left_view_;
-        Eigen::Matrix4f initial_right_view_;
+ public:
+  struct Options {
+    Eigen::Matrix4f initial_left_view_;
+    Eigen::Matrix4f initial_right_view_;
 
-        float camera_size_;
+    float camera_size_;
 
-        std::string render_save_path;
-    };
+    std::string render_save_path;
+  };
 
-    MapVisualizer() = delete;
+  MapVisualizer() = delete;
 
-    MapVisualizer(Options& options, std::shared_ptr<Map> map);
+  MapVisualizer(Options& options, std::shared_ptr<Map> map);
 
-    void Run();
+  void Run();
 
-    void SetFinish();
+  void SetFinish();
 
-private:
-    void RenderVisualization();
+ private:
+  void RenderVisualization();
 
-    void InitializePangolin();
+  void InitializePangolin();
 
-    void ResetVisualization();
+  void ResetVisualization();
 
-    void RenderLeftDisplay();
+  void RenderLeftDisplay();
 
-    void RenderRightDisplay();
+  void RenderRightDisplay();
 
-    void FinishVisualization();
+  void FinishVisualization();
 
-    void DrawLastFrame();
+  void DrawLastFrame();
 
-    void Draw3DPoints(std::vector<Eigen::Vector3f> point_cloud, Eigen::Vector3f color);
+  void Draw3DPoints(std::vector<Eigen::Vector3f> point_cloud,
+                    Eigen::Vector3f color);
 
-    void Draw3DFlow(const std::vector<std::vector<Eigen::Vector3f>>& flows, const Eigen::Vector3f color);
+  void Draw3DFlow(const std::vector<std::vector<Eigen::Vector3f>>& flows,
+                  const Eigen::Vector3f color);
 
-    void DrawGroundTruth(std::vector<Eigen::Vector3f>& estimated_point_cloud,
-                         std::vector<absl::StatusOr<Eigen::Vector3f>>& ground_truth_point_cloud,
-                         Eigen::Vector3f color);
+  void DrawGroundTruth(
+      std::vector<Eigen::Vector3f>& estimated_point_cloud,
+      std::vector<absl::StatusOr<Eigen::Vector3f>>& ground_truth_point_cloud,
+      Eigen::Vector3f color);
 
-    void DrawCamera(Sophus::SE3f camera_transformation_world, Eigen::Vector3f color);
+  void DrawCamera(Sophus::SE3f camera_transformation_world,
+                  Eigen::Vector3f color);
 
-    void DrawKeyFrames();
+  void DrawKeyFrames();
 
-    void DrawLatestTrajectory();
+  void DrawLatestTrajectory();
 
-    void DrawConnectedPoints(std::vector<Eigen::Vector3f>& trajectory, const Eigen::Vector3f color);
+  void DrawConnectedPoints(std::vector<Eigen::Vector3f>& trajectory,
+                           const Eigen::Vector3f color);
 
-    void DrawNonTrackedLandmarks();
+  void DrawNonTrackedLandmarks();
 
-    void SaveRenderToDisk();
+  void SaveRenderToDisk();
 
-    // Pangolin fields for visualization.
-    pangolin::View left_display_, right_display;
-    pangolin::OpenGlRenderState left_renderer_, right_renderer_;
+  // Pangolin fields for visualization.
+  pangolin::View left_display_, right_display;
+  pangolin::OpenGlRenderState left_renderer_, right_renderer_;
 
-    // GUI controls.
-    std::shared_ptr<pangolin::Var<bool>> show_ground_truth_;
+  // GUI controls.
+  std::shared_ptr<pangolin::Var<bool>> show_ground_truth_;
 
-    pangolin::View main_display_;
+  pangolin::View main_display_;
 
-    Options options_;
+  Options options_;
 
-    std::shared_ptr<Map> map_;
+  std::shared_ptr<Map> map_;
 
-    bool should_finish = false;
+  bool should_finish = false;
 
-    int last_frame_id_drawn_, last_frame_id_saved_;
+  int last_frame_id_drawn_, last_frame_id_saved_;
 };
 
-
-#endif //NRSLAM_MAP_VISUALIZER_H
+#endif  // NRSLAM_MAP_VISUALIZER_H

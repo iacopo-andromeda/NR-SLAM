@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,31 +21,30 @@
 #ifndef NRSLAM_REPROJECTION_ERROR_WITH_DEFORMATION_H
 #define NRSLAM_REPROJECTION_ERROR_WITH_DEFORMATION_H
 
-#include "landmark_vertex.h"
 #include "calibration/camera_model.h"
-
 #include "g2o/core/base_binary_edge.h"
 #include "g2o/types/sba/vertex_se3_expmap.h"
+#include "landmark_vertex.h"
 
-class ReprojectionErrorWithDeformation : public  g2o::BaseBinaryEdge<2,
-        Eigen::Vector2d, g2o::VertexSE3Expmap, LandmarkVertex> {
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+class ReprojectionErrorWithDeformation
+    : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSE3Expmap,
+                                 LandmarkVertex> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    ReprojectionErrorWithDeformation();
+  ReprojectionErrorWithDeformation();
 
-    bool read(std::istream& is);
+  bool read(std::istream& is);
 
-    bool write(std::ostream& os) const;
+  bool write(std::ostream& os) const;
 
-    void computeError();
+  void computeError();
 
-    virtual void linearizeOplus();
+  virtual void linearizeOplus();
 
-    std::shared_ptr<CameraModel> calibration_;
+  std::shared_ptr<CameraModel> calibration_;
 
-    Eigen::Vector3d landmark_world_;
+  Eigen::Vector3d landmark_world_;
 };
 
-
-#endif //DEFSLAM_REPROJECTION_ERROR_WITH_DEFORMATION_H
+#endif  // DEFSLAM_REPROJECTION_ERROR_WITH_DEFORMATION_H

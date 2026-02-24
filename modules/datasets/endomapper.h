@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,27 +21,27 @@
 #ifndef NRSLAM_ENDOMAPPER_H
 #define NRSLAM_ENDOMAPPER_H
 
+#include <opencv2/opencv.hpp>
 #include <string>
 
 #include "absl/status/statusor.h"
 
-#include <opencv2/opencv.hpp>
-
 class Endomapper {
-public:
-    // Loads the dataset stored at path. If the video has not been previously split, it splits it. Otherwise just loads
-    // the images.
-    Endomapper(const std::string& video_path);
+ public:
+  // Loads the dataset stored at path. If the video has not been previously
+  // split, it splits it. Otherwise just loads the images.
+  Endomapper(const std::string& video_path);
 
-    // Retrieves the ith image in the sequence.
-    absl::StatusOr<cv::Mat> GetImage(const int idx);
+  // Retrieves the ith image in the sequence.
+  absl::StatusOr<cv::Mat> GetImage(const int idx);
 
-private:
-    // Splits a given video found at videoPath and splits it into single images stored at path.
-    bool SplitVideoIntoFrames(const std::string& dataset_path, const std::string& video_path);
+ private:
+  // Splits a given video found at videoPath and splits it into single images
+  // stored at path.
+  bool SplitVideoIntoFrames(const std::string& dataset_path,
+                            const std::string& video_path);
 
-    std::vector<std::string> images_names_; //Vector with the image paths
+  std::vector<std::string> images_names_;  // Vector with the image paths
 };
 
-
-#endif //NRSLAM_ENDOMAPPER_H
+#endif  // NRSLAM_ENDOMAPPER_H

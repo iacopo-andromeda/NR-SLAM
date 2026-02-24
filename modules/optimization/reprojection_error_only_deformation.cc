@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,18 +22,17 @@
 
 ReprojectionErrorOnlyDeformation::ReprojectionErrorOnlyDeformation() {};
 
-bool ReprojectionErrorOnlyDeformation::read(std::istream& is) {
-    return true;
-}
+bool ReprojectionErrorOnlyDeformation::read(std::istream& is) { return true; }
 
 bool ReprojectionErrorOnlyDeformation::write(std::ostream& os) const {
-    return true;
+  return true;
 }
 
-void ReprojectionErrorOnlyDeformation::computeError()  {
-    const LandmarkVertex* landmark_vertex = static_cast<const LandmarkVertex*>(_vertices[0]);
-    Eigen::Vector2d obs(_measurement);  // Observed point in the image.
-    Eigen::Vector3d landmark_poisition = landmark_vertex->estimate();
+void ReprojectionErrorOnlyDeformation::computeError() {
+  const LandmarkVertex* landmark_vertex =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
+  Eigen::Vector2d obs(_measurement);  // Observed point in the image.
+  Eigen::Vector3d landmark_poisition = landmark_vertex->estimate();
 
-    _error = obs - calibration_->Project(landmark_poisition);
+  _error = obs - calibration_->Project(landmark_poisition);
 }

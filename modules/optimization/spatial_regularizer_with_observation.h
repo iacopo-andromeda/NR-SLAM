@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,29 +21,28 @@
 #ifndef NRSLAM_SPATIAL_REGULARIZER_WITH_OBSERVATION_H
 #define NRSLAM_SPATIAL_REGULARIZER_WITH_OBSERVATION_H
 
-#include "optimization/landmark_vertex.h"
-
 #include "g2o/core/base_binary_edge.h"
 #include "g2o/types/slam3d/se3quat.h"
+#include "optimization/landmark_vertex.h"
 
-class SpatialRegularizerWithObservation : public g2o::BaseBinaryEdge<3,
-        Eigen::Vector3d, LandmarkVertex, LandmarkVertex> {
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+class SpatialRegularizerWithObservation
+    : public g2o::BaseBinaryEdge<3, Eigen::Vector3d, LandmarkVertex,
+                                 LandmarkVertex> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    SpatialRegularizerWithObservation();
+  SpatialRegularizerWithObservation();
 
-    bool read(std::istream& is);
+  bool read(std::istream& is);
 
-    bool write(std::ostream& os) const;
+  bool write(std::ostream& os) const;
 
-    void computeError();
+  void computeError();
 
-    virtual void linearizeOplus();
+  virtual void linearizeOplus();
 
-    double weight_;
-    g2o::SE3Quat next_world_transform_camera_, current_world_transform_camera_;
+  double weight_;
+  g2o::SE3Quat next_world_transform_camera_, current_world_transform_camera_;
 };
 
-
-#endif //NRSLAM_SPATIAL_REGULARIZER_WITH_OBSERVATION_H
+#endif  // NRSLAM_SPATIAL_REGULARIZER_WITH_OBSERVATION_H

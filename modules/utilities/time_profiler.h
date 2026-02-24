@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -28,40 +29,37 @@
 #include "absl/log/log.h"
 
 class TimeProfiler {
-public:
-    TimeProfiler() {}
+ public:
+  TimeProfiler() {}
 
-    template<class Function>
-    void MeasureExectutionTimeOfFunction(const std::string& identifier,
-                                         Function&& function) {
-        std::chrono::high_resolution_clock::time_point time_begin =
-                std::chrono::high_resolution_clock::now();
-        function();
-        std::chrono::high_resolution_clock::time_point time_end =
-                std::chrono::high_resolution_clock::now();
+  template <class Function>
+  void MeasureExectutionTimeOfFunction(const std::string& identifier,
+                                       Function&& function) {
+    std::chrono::high_resolution_clock::time_point time_begin =
+        std::chrono::high_resolution_clock::now();
+    function();
+    std::chrono::high_resolution_clock::time_point time_end =
+        std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration <float, std::milli> time_ms =
-                time_end - time_begin;
+    std::chrono::duration<float, std::milli> time_ms = time_end - time_begin;
 
-        watchers_[identifier].push_back(time_ms.count());
-        LOG(INFO) << time_ms.count();
-    }
+    watchers_[identifier].push_back(time_ms.count());
+    LOG(INFO) << time_ms.count();
+  }
 
-    void Tic(std::string identifier);
+  void Tic(std::string identifier);
 
-    void Toc(std::string identifier);
+  void Toc(std::string identifier);
 
-    void PrintStatisticsForIdentifier(const std::string& identifier) const;
+  void PrintStatisticsForIdentifier(const std::string& identifier) const;
 
-    void SaveStatisticsToFile(const std::string& file_name);
+  void SaveStatisticsToFile(const std::string& file_name);
 
-private:
-    absl::flat_hash_map<std::string, std::vector<float>> watchers_;
+ private:
+  absl::flat_hash_map<std::string, std::vector<float>> watchers_;
 
-    typedef std::chrono::steady_clock::time_point time_point;
-    absl::flat_hash_map<std::string, time_point> initial_measurements_;
+  typedef std::chrono::steady_clock::time_point time_point;
+  absl::flat_hash_map<std::string, time_point> initial_measurements_;
 };
 
-
-
-#endif //NRSLAM_TIME_PROFILER_H
+#endif  // NRSLAM_TIME_PROFILER_H

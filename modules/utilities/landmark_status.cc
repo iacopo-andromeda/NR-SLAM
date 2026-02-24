@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,5 +20,6 @@
 #include "utilities/landmark_status.h"
 
 bool IsUsable(LandmarkStatus status) {
-    return status == TRACKED_WITH_3D || status == TRACKED || status == JUST_TRIANGULATED;
+  return status == TRACKED_WITH_3D || status == TRACKED ||
+         status == JUST_TRIANGULATED;
 }

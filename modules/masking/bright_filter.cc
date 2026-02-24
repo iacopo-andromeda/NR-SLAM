@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,23 +22,23 @@
 
 #include <opencv2/imgproc.hpp>
 
-cv::Mat BrightFilter::generateMask(const cv::Mat &im) {
-    cv::Mat imGray = im, mask;
-    if(imGray.channels()==3){
-        cvtColor(imGray,imGray,cv::COLOR_BGR2GRAY);
-    }
-    else if(imGray.channels()==4){
-        cvtColor(imGray,imGray,cv::COLOR_BGR2GRAY);
-    }
+cv::Mat BrightFilter::generateMask(const cv::Mat& im) {
+  cv::Mat imGray = im, mask;
+  if (imGray.channels() == 3) {
+    cvtColor(imGray, imGray, cv::COLOR_BGR2GRAY);
+  } else if (imGray.channels() == 4) {
+    cvtColor(imGray, imGray, cv::COLOR_BGR2GRAY);
+  }
 
-    cv::threshold(imGray,mask,th_,255,cv::THRESH_BINARY_INV);
+  cv::threshold(imGray, mask, th_, 255, cv::THRESH_BINARY_INV);
 
-    cv::erode(mask, mask, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(11, 11)));
-    cv::GaussianBlur(mask, mask, cv::Size(11, 11), 5, 5, cv::BORDER_REFLECT_101);
+  cv::erode(mask, mask,
+            getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(11, 11)));
+  cv::GaussianBlur(mask, mask, cv::Size(11, 11), 5, 5, cv::BORDER_REFLECT_101);
 
-    return mask;
+  return mask;
 }
 
 std::string BrightFilter::getDescription() {
-    return std::string("Bright mask with th_ = " + std::to_string(th_));
+  return std::string("Bright mask with th_ = " + std::to_string(th_));
 }

@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,13 +21,12 @@
 #ifndef NRSLAM_SYSTEM_H
 #define NRSLAM_SYSTEM_H
 
-
 #include <memory>
 #include <thread>
 
+#include "SLAM/settings.h"
 #include "map/map.h"
 #include "mapping/mapping.h"
-#include "SLAM/settings.h"
 #include "stereo/stereo_lucas_kanade.h"
 #include "stereo/stereo_pattern_matching.h"
 #include "tracking/tracking.h"
@@ -36,53 +36,53 @@
 #include "visualization/map_visualizer.h"
 
 class System {
-public:
-    System() = delete;
+ public:
+  System() = delete;
 
-    System(const std::string settings_file_path);
+  System(const std::string settings_file_path);
 
-    ~System();
+  ~System();
 
-    // Tracks an image using the monocular pipeline
-    void TrackImage(const cv::Mat& im);
+  // Tracks an image using the monocular pipeline
+  void TrackImage(const cv::Mat& im);
 
-    // Tracks the next image using some stereo information:
-    //  - For stereo map initialization
-    //  - Reconstruction evaluation
-    // This is controlled by the settings passed to the system
-    // TODO: implement stereo options
-    void TrackImageWithStereo(const cv::Mat& im_left, const cv::Mat& im_right);
+  // Tracks the next image using some stereo information:
+  //  - For stereo map initialization
+  //  - Reconstruction evaluation
+  // This is controlled by the settings passed to the system
+  // TODO: implement stereo options
+  void TrackImageWithStereo(const cv::Mat& im_left, const cv::Mat& im_right);
 
-    // Tracks the next image using a precomputed depth image.
-    void TrackImageWithDepth(const cv::Mat& im_left, const cv::Mat& im_depth);
+  // Tracks the next image using a precomputed depth image.
+  void TrackImageWithDepth(const cv::Mat& im_left, const cv::Mat& im_depth);
 
-private:
-    // Applies preprocessing to the input image (CLAHE, etc).
-    cv::Mat ImageProcessing(const cv::Mat& im, cv::Mat& im_gray);
+ private:
+  // Applies preprocessing to the input image (CLAHE, etc).
+  cv::Mat ImageProcessing(const cv::Mat& im, cv::Mat& im_gray);
 
-    std::shared_ptr<Map> map_;
+  std::shared_ptr<Map> map_;
 
-    std::unique_ptr<Tracking> tracker_;
+  std::unique_ptr<Tracking> tracker_;
 
-    std::unique_ptr<Mapping> mapper_;
+  std::unique_ptr<Mapping> mapper_;
 
-    std::unique_ptr<Settings> settings_;
+  std::unique_ptr<Settings> settings_;
 
-    cv::Ptr<cv::CLAHE> clahe_;
-    std::shared_ptr<Masker> masker_;
+  cv::Ptr<cv::CLAHE> clahe_;
+  std::shared_ptr<Masker> masker_;
 
-    // std::shared_ptr<StereoPatternMatching> stereo_matcher_;
-    std::shared_ptr<StereoLucasKanade> stereo_matcher_;
-    std::shared_ptr<StereoPatternMatching> stereo_pattern_matcher_;
+  // std::shared_ptr<StereoPatternMatching> stereo_matcher_;
+  std::shared_ptr<StereoLucasKanade> stereo_matcher_;
+  std::shared_ptr<StereoPatternMatching> stereo_pattern_matcher_;
 
-    std::unique_ptr<MapVisualizer> map_visualizer_;
-    std::unique_ptr<std::thread> map_visualizer_thread_;
+  std::unique_ptr<MapVisualizer> map_visualizer_;
+  std::unique_ptr<std::thread> map_visualizer_thread_;
 
-    std::shared_ptr<ImageVisualizer> image_visualizer_;
+  std::shared_ptr<ImageVisualizer> image_visualizer_;
 
-    std::unique_ptr<FrameEvaluator> frame_evaluator_;
+  std::unique_ptr<FrameEvaluator> frame_evaluator_;
 
-    std::unique_ptr<TimeProfiler> time_profiler_;
+  std::unique_ptr<TimeProfiler> time_profiler_;
 };
 
-#endif //NRSLAM_SYSTEM_H
+#endif  // NRSLAM_SYSTEM_H

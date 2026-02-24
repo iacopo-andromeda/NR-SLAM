@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,37 +21,35 @@
 #ifndef NRSLAM_PIN_HOLE_H
 #define NRSLAM_KANNALA_BRANDT_8_H
 
-#include "camera_model.h"
-
 #include <assert.h>
-#include <vector>
 
 #include <opencv2/opencv.hpp>
+#include <vector>
 
-class PinHole : public CameraModel{
-public:
-    PinHole() {
-        calibration_parameters_.resize(4);
-    }
+#include "camera_model.h"
 
-    PinHole(const std::vector<float> calibration_parameters) :
-    CameraModel(calibration_parameters) {
-        assert(calibration_parameters_.size() == 4);
-    }
+class PinHole : public CameraModel {
+ public:
+  PinHole() { calibration_parameters_.resize(4); }
 
-    void Project(const Eigen::Vector3f& landmark_position,
-                 Eigen::Vector2f& pixel_position);
+  PinHole(const std::vector<float> calibration_parameters)
+      : CameraModel(calibration_parameters) {
+    assert(calibration_parameters_.size() == 4);
+  }
 
-    void Unproject(const Eigen::Vector2f& pixel_position,
-                   Eigen::Vector3f& projecting_ray);
+  void Project(const Eigen::Vector3f& landmark_position,
+               Eigen::Vector2f& pixel_position);
 
-    void ProjectionJacobian(const Eigen::Vector3f& landmark_position,
-                            Eigen::Matrix<float,2,3>& projection_jacobian);
+  void Unproject(const Eigen::Vector2f& pixel_position,
+                 Eigen::Vector3f& projecting_ray);
 
-    void UnprojectionJacobian(const Eigen::Vector2f& pixel_position,
-                              Eigen::Matrix<float,3,2>& unprojection_jacobian);
+  void ProjectionJacobian(const Eigen::Vector3f& landmark_position,
+                          Eigen::Matrix<float, 2, 3>& projection_jacobian);
 
-    Eigen::Matrix3f ToIntrinsicsMatrix();
+  void UnprojectionJacobian(const Eigen::Vector2f& pixel_position,
+                            Eigen::Matrix<float, 3, 2>& unprojection_jacobian);
+
+  Eigen::Matrix3f ToIntrinsicsMatrix();
 };
 
-#endif //NRSLAM_KANNALA_BRANDT_8_H
+#endif  // NRSLAM_KANNALA_BRANDT_8_H

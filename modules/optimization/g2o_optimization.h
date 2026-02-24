@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,20 +25,18 @@
 #include "map/map.h"
 #include "map/regularization_graph.h"
 
-void CameraPoseOptimization(Frame& frame, const Sophus::SE3f& previous_camera_transform_world);
+void CameraPoseOptimization(
+    Frame& frame, const Sophus::SE3f& previous_camera_transform_world);
 
-absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(Frame& current_frame,
-                                                     std::shared_ptr<Map> map,
-                                                     const Sophus::SE3f& previous_camera_transform_world,
-                                                     const float scale);
+absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
+    Frame& current_frame, std::shared_ptr<Map> map,
+    const Sophus::SE3f& previous_camera_transform_world, const float scale);
 
-absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(TemporalBuffer& temporal_buffer,
-                                                        int candidate_id,
-                                                        std::shared_ptr<CameraModel> calibration,
-                                                        const float scale);
+absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(
+    TemporalBuffer& temporal_buffer, int candidate_id,
+    std::shared_ptr<CameraModel> calibration, const float scale);
 
 void LocalDeformableBundleAdjustment(std::shared_ptr<Map> map,
                                      const float scale);
 
-
-#endif //NRSLAM_G2O_OPTIMIZATION_H
+#endif  // NRSLAM_G2O_OPTIMIZATION_H

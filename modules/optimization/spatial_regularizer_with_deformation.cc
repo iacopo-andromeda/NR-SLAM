@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,31 +22,31 @@
 
 #include "g2o/core/factory.h"
 
-SpatialRegularizerWithDeformation::SpatialRegularizerWithDeformation(){};
+SpatialRegularizerWithDeformation::SpatialRegularizerWithDeformation() {};
 
-bool SpatialRegularizerWithDeformation::read(std::istream& is){
-    return true;
-};
+bool SpatialRegularizerWithDeformation::read(std::istream& is) { return true; };
 
-bool SpatialRegularizerWithDeformation::write(std::ostream& os) const{
-    writeParamIds(os);
-    os << " " << weight_ << " ";
-    return writeInformationMatrix(os);
+bool SpatialRegularizerWithDeformation::write(std::ostream& os) const {
+  writeParamIds(os);
+  os << " " << weight_ << " ";
+  return writeInformationMatrix(os);
 };
 
 void SpatialRegularizerWithDeformation::computeError() {
-    const LandmarkVertex* vertex_flow_1 = static_cast<const LandmarkVertex*>(_vertices[0]);
-    const LandmarkVertex* vertex_flow_2 = static_cast<const LandmarkVertex*>(_vertices[1]);
+  const LandmarkVertex* vertex_flow_1 =
+      static_cast<const LandmarkVertex*>(_vertices[0]);
+  const LandmarkVertex* vertex_flow_2 =
+      static_cast<const LandmarkVertex*>(_vertices[1]);
 
-    Eigen::Vector3d flow_1 = vertex_flow_1->estimate();
-    Eigen::Vector3d flow_2 = vertex_flow_2->estimate();
+  Eigen::Vector3d flow_1 = vertex_flow_1->estimate();
+  Eigen::Vector3d flow_2 = vertex_flow_2->estimate();
 
-    _error = weight_ * (flow_1 - flow_2);
+  _error = weight_ * (flow_1 - flow_2);
 }
 
 void SpatialRegularizerWithDeformation::linearizeOplus() {
-    _jacobianOplusXi = weight_ * Eigen::Matrix3d::Identity();
-    _jacobianOplusXj = -weight_ * Eigen::Matrix3d::Identity();
+  _jacobianOplusXi = weight_ * Eigen::Matrix3d::Identity();
+  _jacobianOplusXj = -weight_ * Eigen::Matrix3d::Identity();
 }
 
 G2O_REGISTER_TYPE(SPATIAL_REGULARIZER, SpatialRegularizerWithDeformation);

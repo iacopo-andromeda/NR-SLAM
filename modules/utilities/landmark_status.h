@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,14 +22,14 @@
 #define NRSLAM_LANDMARK_STATUS_H
 
 enum LandmarkStatus {
-    TRACKED_WITH_3D,
-    TRACKED,
-    JUST_TRIANGULATED,
-    BAD,
-    OUT_IMAGE_BOUNDARIES,
-    BAD_FEATURE,
+  TRACKED_WITH_3D,
+  TRACKED,
+  JUST_TRIANGULATED,
+  BAD,
+  OUT_IMAGE_BOUNDARIES,
+  BAD_FEATURE,
 };
 
 bool IsUsable(LandmarkStatus status);
 
-#endif //NRSLAM_LANDMARK_STATUS_H
+#endif  // NRSLAM_LANDMARK_STATUS_H

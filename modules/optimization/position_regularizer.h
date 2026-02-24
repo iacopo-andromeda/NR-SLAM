@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,27 +21,25 @@
 #ifndef NRSLAM_POSITION_REGULARIZER_H
 #define NRSLAM_POSITION_REGULARIZER_H
 
+#include "g2o/core/base_binary_edge.h"
 #include "optimization/landmark_vertex.h"
 
-#include "g2o/core/base_binary_edge.h"
+class PositionRegularizer
+    : public g2o::BaseBinaryEdge<1, double, LandmarkVertex, LandmarkVertex> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-class PositionRegularizer : public g2o::BaseBinaryEdge<1, double,
-        LandmarkVertex, LandmarkVertex> {
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  PositionRegularizer();
 
-    PositionRegularizer();
+  bool read(std::istream& is);
 
-    bool read(std::istream& is);
+  bool write(std::ostream& os) const;
 
-    bool write(std::ostream& os) const;
+  void computeError();
 
-    void computeError();
+  virtual void linearizeOplus();
 
-    virtual void linearizeOplus();
-
-    double k_;
+  double k_;
 };
 
-
-#endif //NRSLAM_POSITION_REGULARIZER_H
+#endif  // NRSLAM_POSITION_REGULARIZER_H

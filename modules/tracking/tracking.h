@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,6 +21,7 @@
 #ifndef NRSLAM_TRACKING_H
 #define NRSLAM_TRACKING_H
 
+#include "absl/container/flat_hash_set.h"
 #include "calibration/camera_model.h"
 #include "features/feature.h"
 #include "map/frame.h"
@@ -31,104 +33,105 @@
 #include "utilities/time_profiler.h"
 #include "visualization/image_visualizer.h"
 
-#include "absl/container/flat_hash_set.h"
-
 class Tracking {
-public:
-    struct Options {
-        int klt_window_size = 21;
-        int klt_max_level = 3;
-        int klt_max_iters = 50;
-        float klt_epsilon = 0.01;
-        float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.7;
+ public:
+  struct Options {
+    int klt_window_size = 21;
+    int klt_max_level = 3;
+    int klt_max_iters = 50;
+    float klt_epsilon = 0.01;
+    float klt_min_eig_th = 1e-4;
+    float klt_min_SSIM = 0.7;
 
-        int images_to_insert_keyframe = 5;
+    int images_to_insert_keyframe = 5;
 
-        float radians_per_pixel;
-    };
+    float radians_per_pixel;
+  };
 
-    enum TrackingStatus {
-        NOT_INITIALIZED,
-        TRACKING,
-        LOST
-    };
+  enum TrackingStatus { NOT_INITIALIZED, TRACKING, LOST };
 
-    Tracking() = delete;
+  Tracking() = delete;
 
-    Tracking(const Options options, std::shared_ptr<Map> map,
-             std::shared_ptr<CameraModel> calibration,
-             std::shared_ptr<StereoLucasKanade> stereo_matcher,
-             std::shared_ptr<ImageVisualizer> image_visualizer,
-             TimeProfiler* time_profiler);
+  Tracking(const Options options, std::shared_ptr<Map> map,
+           std::shared_ptr<CameraModel> calibration,
+           std::shared_ptr<StereoLucasKanade> stereo_matcher,
+           std::shared_ptr<ImageVisualizer> image_visualizer,
+           TimeProfiler* time_profiler);
 
-    void TrackImage(const cv::Mat& im, const absl::flat_hash_map<std::string, cv::Mat>& masks,
-                    const cv::Mat& additional_im = cv::Mat(), const cv::Mat& im_clahe = cv::Mat());
+  void TrackImage(const cv::Mat& im,
+                  const absl::flat_hash_map<std::string, cv::Mat>& masks,
+                  const cv::Mat& additional_im = cv::Mat(),
+                  const cv::Mat& im_clahe = cv::Mat());
 
-    TrackingStatus GetTrackingStatus() const;
+  TrackingStatus GetTrackingStatus() const;
 
-private:
-    void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
-                         std::vector<cv::KeyPoint>& keypoints);
+ private:
+  void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
+                       std::vector<cv::KeyPoint>& keypoints);
 
-    void MonocularMapInitialization(const cv::Mat& im_left,
-                                 const cv::Mat& mask, const cv::Mat& im_clahe);
+  void MonocularMapInitialization(const cv::Mat& im_left, const cv::Mat& mask,
+                                  const cv::Mat& im_clahe);
 
-    void StereoMapInitialization(const cv::Mat& im_left, const cv::Mat& im_right,
-                                 const cv::Mat& mask, const cv::Mat& im_clahe);
+  void StereoMapInitialization(const cv::Mat& im_left, const cv::Mat& im_right,
+                               const cv::Mat& mask, const cv::Mat& im_clahe);
 
-    absl::flat_hash_set<ID> TrackCameraAndDeformation(const cv::Mat& im, const cv::Mat& mask);
+  absl::flat_hash_set<ID> TrackCameraAndDeformation(const cv::Mat& im,
+                                                    const cv::Mat& mask);
 
-    void DataAssociation(const cv::Mat& im, const cv::Mat& mask);
+  void DataAssociation(const cv::Mat& im, const cv::Mat& mask);
 
-    void CameraPoseEstimation();
+  void CameraPoseEstimation();
 
-    absl::flat_hash_set<ID> CameraPoseAndDeformationEstimation();
+  absl::flat_hash_set<ID> CameraPoseAndDeformationEstimation();
 
-    void KeyFrameInsertion(const cv::Mat& im, const absl::flat_hash_map<std::string, cv::Mat>& masks);
+  void KeyFrameInsertion(
+      const cv::Mat& im,
+      const absl::flat_hash_map<std::string, cv::Mat>& masks);
 
-    bool NeedNewKeyFrame();
+  bool NeedNewKeyFrame();
 
-    void CreateNewKeyFrame(const cv::Mat& im, const absl::flat_hash_map<std::string, cv::Mat>& masks);
+  void CreateNewKeyFrame(
+      const cv::Mat& im,
+      const absl::flat_hash_map<std::string, cv::Mat>& masks);
 
-    void ExtractFeaturesInFrame(const cv::Mat& im, const cv::Mat& mask, Frame& frame);
+  void ExtractFeaturesInFrame(const cv::Mat& im, const cv::Mat& mask,
+                              Frame& frame);
 
-    void SetKLTReference(const cv::Mat& im, Frame& frame, const cv::Mat& mask);
+  void SetKLTReference(const cv::Mat& im, Frame& frame, const cv::Mat& mask);
 
-    void PointReuse(const cv::Mat& im, const cv::Mat& mask,
-                    absl::flat_hash_set<ID> lost_mappoint_ids);
+  void PointReuse(const cv::Mat& im, const cv::Mat& mask,
+                  absl::flat_hash_set<ID> lost_mappoint_ids);
 
-    void UpdateTriangulatedPoints();
+  void UpdateTriangulatedPoints();
 
-    Options options_;
+  Options options_;
 
-    std::shared_ptr<Map> map_;
+  std::shared_ptr<Map> map_;
 
-    std::shared_ptr<CameraModel> calibration_;
+  std::shared_ptr<CameraModel> calibration_;
 
-    std::shared_ptr<Feature> feature_extractor_;
+  std::shared_ptr<Feature> feature_extractor_;
 
-    LucasKanadeTracker klt_tracker_;
+  LucasKanadeTracker klt_tracker_;
 
-    std::shared_ptr<Frame> current_frame_;
+  std::shared_ptr<Frame> current_frame_;
 
-    //std::shared_ptr<StereoPatternMatching> stereo_matcher_;
-    std::shared_ptr<StereoLucasKanade> stereo_matcher_;
+  // std::shared_ptr<StereoPatternMatching> stereo_matcher_;
+  std::shared_ptr<StereoLucasKanade> stereo_matcher_;
 
-    Sophus::SE3f motion_model_;
+  Sophus::SE3f motion_model_;
 
-    std::shared_ptr<ImageVisualizer> image_visualizer_;
+  std::shared_ptr<ImageVisualizer> image_visualizer_;
 
-    int n_images_from_last_keyframe_ = 0;
+  int n_images_from_last_keyframe_ = 0;
 
-    std::unique_ptr<MonocularMapInitializer> monocular_map_initializer_;
+  std::unique_ptr<MonocularMapInitializer> monocular_map_initializer_;
 
-    TrackingStatus tracking_status_;
+  TrackingStatus tracking_status_;
 
-    Sophus::SE3f previous_camera_transform_world_;
+  Sophus::SE3f previous_camera_transform_world_;
 
-    TimeProfiler* time_profiler_;
+  TimeProfiler* time_profiler_;
 };
 
-
-#endif //NRSLAM_TRACKING_H
+#endif  // NRSLAM_TRACKING_H

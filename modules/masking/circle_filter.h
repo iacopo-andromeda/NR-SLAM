@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,23 +25,22 @@
 
 /*
  * This class defines a mask over a circle inscribed in the image. It masks out:
- * - cx and cy offset of the center of the circle from the center of the image (in image coordinates)
+ * - cx and cy offset of the center of the circle from the center of the image
+ * (in image coordinates)
  */
 
-class CircleFilter : public Filter
-{
-public:
-    CircleFilter(int cx, int cy) : cx_(cx), cy_(cy)
-    {
-        filter_name_ = "CircleFilter";
-    }
+class CircleFilter : public Filter {
+ public:
+  CircleFilter(int cx, int cy) : cx_(cx), cy_(cy) {
+    filter_name_ = "CircleFilter";
+  }
 
-    cv::Mat generateMask(const cv::Mat &im);
+  cv::Mat generateMask(const cv::Mat& im);
 
-    std::string getDescription();
+  std::string getDescription();
 
-private:
-    int cx_, cy_;
+ private:
+  int cx_, cy_;
 };
 
-#endif // NRSLAM_CIRCLEFILTER_H
+#endif  // NRSLAM_CIRCLEFILTER_H

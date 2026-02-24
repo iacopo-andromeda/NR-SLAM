@@ -1,7 +1,8 @@
 /*
  * This file is part of NR-SLAM
  *
- * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
+ * Copyright (C) 2022-2023 Juan J. Gómez Rodríguez, José M.M. Montiel and Juan
+ * D. Tardós, University of Zaragoza.
  *
  * NR-SLAM is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,15 +21,14 @@
 #ifndef NRSLAM_TYPES_CONVERSIONS_H
 #define NRSLAM_TYPES_CONVERSIONS_H
 
-#include <sophus/se3.hpp>
-#include <opencv2/core/mat.hpp>
 #include <eigen3/Eigen/Core>
+#include <opencv2/core/mat.hpp>
+#include <sophus/se3.hpp>
 
 Sophus::SE3<float> cvToSophus(const cv::Mat& T);
 
-Eigen::Matrix<float,3,3> cvToEigenM3f(const cv::Mat &cvMat3);
+Eigen::Matrix<float, 3, 3> cvToEigenM3f(const cv::Mat& cvMat3);
 
-Eigen::Matrix<float,3,1> cvToEigenV3f(const cv::Mat &cvVector);
+Eigen::Matrix<float, 3, 1> cvToEigenV3f(const cv::Mat& cvVector);
 
-
-#endif //NRSLAM_TYPES_CONVERSIONS_H
+#endif  // NRSLAM_TYPES_CONVERSIONS_H
