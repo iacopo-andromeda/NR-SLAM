@@ -24,14 +24,14 @@
 
 /*
  * This class defines a mask over a circle inscribed in the image. It masks out:
- * - cx and cy center of the circle (in image coordinates)
- * - r_ radius of the circle
+ * - cx and cy offset of the center of the circle from the center of the image (in image coordinates)
  */
 
-class CircleFilter : public Filter {
+class CircleFilter : public Filter
+{
 public:
-    CircleFilter(int cx, int cy, int r) :
-            cx_(cx), cy_(cy), r_(r) {
+    CircleFilter(int cx, int cy) : cx_(cx), cy_(cy)
+    {
         filter_name_ = "CircleFilter";
     }
 
@@ -40,9 +40,7 @@ public:
     std::string getDescription();
 
 private:
-    int cx_, cy_, r_;
-
+    int cx_, cy_;
 };
 
-
-#endif //NRSLAM_CIRCLEFILTER_H
+#endif // NRSLAM_CIRCLEFILTER_H

@@ -21,14 +21,21 @@
 
 #include <opencv2/imgproc.hpp>
 
-cv::Mat CircleFilter::generateMask(const cv::Mat &im){
-    
+cv::Mat CircleFilter::generateMask(const cv::Mat &im)
+{
+
     cv::Mat mask = cv::Mat::zeros(im.size(), CV_8U);
-    cv::circle(mask, cv::Point(cx_, cy_), r_, cv::Scalar(255), cv::FILLED);
+
+    auto cx = std::clamp(im.cols / 2 + cx_, 0, im.cols - 1);
+    auto cy = std::clamp(im.rows / 2 + cy_, 0, im.rows - 1);
+
+    auto r = std::min({cx, cy, im.cols - cx, im.rows - cy});
+
+    cv::circle(mask, cv::Point(cx, cy), r, cv::Scalar(255), cv::FILLED);
     return mask;
 }
 
-std::string CircleFilter::getDescription(){
-    return std::string("Circle mask with parameters [cx=" + std::to_string(cx_) + ", cy=" + std::to_string(cy_) + ", r=" + std::to_string(r_) + "]");
-
+std::string CircleFilter::getDescription()
+{
+    return std::string("Circle mask with parameters [cx=" + std::to_string(cx_) + ", cy=" + std::to_string(cy_) + "]");
 }

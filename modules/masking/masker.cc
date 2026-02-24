@@ -29,47 +29,56 @@
 #include <fstream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 
-void Masker::loadFromTxt(std::string path){
+void Masker::loadFromTxt(std::string path)
+{
     LOG(INFO) << "Loading filters: " << path;
 
     // Open filter file.
     std::ifstream filterFile(path);
 
-    if (filterFile.is_open()){
+    if (filterFile.is_open())
+    {
         std::string line;
-        while (getline(filterFile, line)){
+        while (getline(filterFile, line))
+        {
             std::istringstream ss(line);
 
-            //Get filter name
+            // Get filter name
             std::string name;
             ss >> name;
 
-            if (name == "BorderFilter"){
+            if (name == "BorderFilter")
+            {
                 std::string rb, re, cb, ce, th;
                 ss >> rb >> re >> cb >> ce >> th;
                 std::unique_ptr<Filter> f(new BorderFilter(stoi(rb), stoi(re), stoi(cb), stoi(ce), stoi(th)));
                 addFilter(f);
             }
-            else if (name == "BrightFilter"){
+            else if (name == "BrightFilter")
+            {
                 std::string thLo;
                 ss >> thLo;
                 std::unique_ptr<Filter> f(new BrightFilter(stoi(thLo)));
                 addFilter(f);
             }
-            else if(name == "Predefined"){
+            else if (name == "Predefined")
+            {
                 std::string path;
                 ss >> path;
                 std::unique_ptr<Filter> f(new PredefinedFilter(path));
                 addFilter(f);
             }
-            else if (name == "CircleFilter"){
-                std::string cx, cy, r;
-                ss >> cx >> cy >> r;
-                std::unique_ptr<Filter> f(new CircleFilter(stoi(cx), stoi(cy), stoi(r)));
+            else if (name == "CircleFilter")
+            {
+                std::string cx, cy;
+                ss >> cx >> cy;
+                std::unique_ptr<Filter> f(new CircleFilter(stoi(cx), stoi(cy)));
                 addFilter(f);
             }
-            else{
+            else
+            {
                 LOG(WARNING) << "Unknown filter name: " << name;
             }
         }
@@ -78,56 +87,73 @@ void Masker::loadFromTxt(std::string path){
     }
 }
 
-void Masker::addFilter(std::unique_ptr<Filter> &f){
+void Masker::addFilter(std::unique_ptr<Filter> &f)
+{
     filters_.push_back(std::move(f));
 }
 
-void Masker::deleteFilter(size_t idx){
+void Masker::deleteFilter(size_t idx)
+{
     filters_.erase(filters_.begin() + idx);
 }
 
-cv::Mat Masker::mask(const cv::Mat &im){
+cv::Mat Masker::mask(const cv::Mat &im)
+{
     // Generates an empty mask (all values set to 0).
     cv::Mat mask(im.rows, im.cols, CV_8U, cv::Scalar(255));
 
     // Apply each filter.
-    for (auto &f : filters_){
+    for (auto &f : filters_)
+    {
         cv::bitwise_and(mask, f->generateMask(im), mask);
     }
 
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(10,10));
-    cv::erode(mask,mask,kernel);
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    cv::erode(mask, mask, kernel);
 
     return mask.clone();
 }
 
-absl::flat_hash_map<std::string, cv::Mat> Masker::GetAllMasks(const cv::Mat &im){
+absl::flat_hash_map<std::string, cv::Mat> Masker::GetAllMasks(const cv::Mat &im)
+{
     // Map with all the masks generated
     absl::flat_hash_map<std::string, cv::Mat> all_masks;
 
     // Generates an empty mask (all values set to 0).
     cv::Mat global_mask(im.rows, im.cols, CV_8U, cv::Scalar(255));
 
+    LOG(INFO) << "Generating masks for image of size: " << im.cols << "x" << im.rows;
+
     // Apply each filter.
-    for (auto &f : filters_){
+    for (auto &f : filters_)
+    {
         auto mask = f->generateMask(im);
         all_masks[f->GetFilterName()] = mask;
+
+        cv::imshow("Mask for filter: " + f->GetFilterName(), mask);
 
         cv::bitwise_and(global_mask, mask, global_mask);
     }
 
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(10,10));
-    cv::erode(global_mask,global_mask,kernel);
+    cv::imshow("Global mask before erosion", global_mask);
+
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    cv::erode(global_mask, global_mask, kernel);
+    cv::imshow("Global mask after erosion", global_mask);
+    cv::waitKey(1);
+    cv::destroyAllWindows();
 
     all_masks["Global"] = global_mask;
 
     return all_masks;
 }
 
-std::string Masker::printFilters(){
+std::string Masker::printFilters()
+{
     std::string msg("List of filters (" + std::to_string(filters_.size()) + "):\n");
 
-    for (auto &f : filters_){
+    for (auto &f : filters_)
+    {
         msg += "\t-" + f->getDescription() + "\n";
     }
 

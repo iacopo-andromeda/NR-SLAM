@@ -1,2 +1,2 @@
 BrightFilter 225
-CircleFilter 320 180 85
+CircleFilter 0 0
