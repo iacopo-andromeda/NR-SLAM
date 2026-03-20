@@ -49,11 +49,16 @@ void ImageVisualizer::DrawCurrentFrame(Frame& frame,
     DrawFeature(image_to_display, keypoints[idx].pt, cv::Scalar(0, 255, 0));
   }
 
-  cv::imshow("Current Frame", image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow("Current Frame", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "current_frame/" +
                              to_string(frame.GetId()) + ".png";
+    LOG(INFO) << "Saved current frame to disk at: " << image_file_path;
     cv::imwrite(image_file_path, image_to_display);
   }
 }
@@ -68,7 +73,11 @@ void ImageVisualizer::DrawFrame(Frame& frame, std::string name) {
     DrawFeature(image_to_display, keypoints[idx].pt, cv::Scalar(0, 255, 0));
   }
 
-  cv::imshow(name, image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow(name, image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 }
 
 void ImageVisualizer::DrawRegularizationGraph(
@@ -116,7 +125,12 @@ void ImageVisualizer::DrawRegularizationGraph(
     }
   }
   cout << endl;
-  cv::imshow("Regularization graph", image_to_display);
+
+  if (options_.wait_for_user_button) {
+    cv::imshow("Regularization graph", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path +
@@ -152,7 +166,11 @@ void ImageVisualizer::DrawOpticalFlow(TemporalBuffer& temporal_buffer) {
     }
   }
 
-  cv::imshow("Optical flow", image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow("Optical flow", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "optical_flow/" +
@@ -195,12 +213,17 @@ void ImageVisualizer::DrawClusteredOpticalFlow(
     }
   }
 
-  cv::imshow("Clustered optical flow", image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow("Clustered optical flow", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path +
                              "clustered_optical_flow/" +
                              to_string(current_image_number_) + ".png";
+    LOG(INFO) << "Saved clustered optical flow to disk at: " << image_file_path;
     cv::imwrite(image_file_path, image_to_display);
   }
 }
@@ -215,11 +238,16 @@ void ImageVisualizer::DrawFeatures(std::vector<cv::KeyPoint>& keypoints,
     DrawFeature(image_to_display, keypoints[idx].pt, cv::Scalar(0, 255, 0));
   }
 
-  cv::imshow("Essential Matrix inliers", image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow("Essential Matrix inliers", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "current_features/" +
                              to_string(current_image_number_) + ".png";
+    LOG(INFO) << "Saved current features to disk at: " << image_file_path;
     cv::imwrite(image_file_path, image_to_display);
   }
 }
@@ -257,7 +285,11 @@ void ImageVisualizer::DrawFeatures(
     }
   }
 
-  cv::imshow("Initialization results", image_to_display);
+  if (options_.wait_for_user_button) {
+    cv::imshow("Initialization results", image_to_display);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+  }
 }
 
 void ImageVisualizer::UpdateWindows() {

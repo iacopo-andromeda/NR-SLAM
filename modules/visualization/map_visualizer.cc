@@ -386,6 +386,8 @@ void MapVisualizer::DrawNonTrackedLandmarks() {
 
 void MapVisualizer::SaveRenderToDisk() {
   if (options_.render_save_path.empty()) {
+    LOG(INFO)
+        << "No render save path provided, skipping saving render to disk.";
     return;
   }
 
@@ -393,6 +395,7 @@ void MapVisualizer::SaveRenderToDisk() {
     const string render_path =
         options_.render_save_path + to_string(last_frame_id_drawn_);
     main_display_.SaveRenderNow(render_path);
+    LOG(INFO) << "Saved render to disk at: " << render_path;
 
     last_frame_id_saved_ = last_frame_id_drawn_;
   }

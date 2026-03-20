@@ -22,7 +22,7 @@
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "features/shi_tomasi.h"
+#include "features/shi_tomasi_cv.h"
 #include "optimization/g2o_optimization.h"
 #include "utilities/dbscan.h"
 #include "utilities/geometry_toolbox.h"
@@ -32,19 +32,20 @@ using namespace std;
 
 Tracking::Tracking(const Tracking::Options options, std::shared_ptr<Map> map,
                    std::shared_ptr<CameraModel> calibration,
-                   std::shared_ptr<StereoLucasKanade> stereo_matcher,
                    std::shared_ptr<ImageVisualizer> image_visualizer,
                    TimeProfiler* time_profiler)
     : options_(options),
       map_(map),
       calibration_(calibration),
-      stereo_matcher_(stereo_matcher),
       image_visualizer_(image_visualizer),
       tracking_status_(NOT_INITIALIZED),
       time_profiler_(time_profiler) {
-  ShiTomasi::Options shi_tomasi_options;
-  shi_tomasi_options.non_max_suprresion_window_size = 7;
-  feature_extractor_ = make_shared<ShiTomasi>(shi_tomasi_options);
+  ShiTomasiCV::Options shi_tomasi_options;
+  shi_tomasi_options.maxCorners = 1000;
+  shi_tomasi_options.qualityLevel = 0.1;
+  shi_tomasi_options.minDistance = 7;
+
+  feature_extractor_ = make_shared<ShiTomasiCV>(shi_tomasi_options);
 
   klt_tracker_ = LucasKanadeTracker(
       cv::Size(options_.klt_window_size, options_.klt_window_size),
@@ -81,11 +82,10 @@ void Tracking::TrackImage(
     const cv::Mat& additional_im, const cv::Mat& im_clahe) {
   map_->SetAllMappointsToNonActive();
 
-  if (map_->IsEmpty()) {
-    // If map is not initialized, perform map initialization.
+  const bool map_is_empty = map_->IsEmpty();
 
-    // For stereo experiment purposes.
-    // StereoMapInitialization(im, additional_im, masks.at("Global"), im_clahe);
+  if (map_is_empty) {
+    // If map is not initialized, perform map initialization.
 
     // Depending on the type of sequence, the mask type used can be different.
     MonocularMapInitialization(im, masks.at("Global"), im_clahe);
@@ -104,8 +104,14 @@ void Tracking::TrackImage(
     // Point reuse.
     PointReuse(im, cv::Mat(), lost_mappoint_ids);
 
-    if (current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size() < 10) {
-      exit(0);
+    const int tracked_landmarks_after_reuse =
+        current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size();
+    if (tracked_landmarks_after_reuse < 10) {
+      LOG(WARNING) << "Tracking frame abort: tracked_3d="
+                   << tracked_landmarks_after_reuse
+                   << " is below minimum 10 after point reuse";
+      LOG(WARNING) << "Should exit system. Continuing instead";
+      return;
     }
 
     // KeyFrame insertion.
@@ -115,10 +121,13 @@ void Tracking::TrackImage(
     map_->SetLastFrame(current_frame_);
 
     // Draw current frame.
-    image_visualizer_->DrawCurrentFrame(*current_frame_);
-    image_visualizer_->DrawRegularizationGraph(
-        *current_frame_, *(map_->GetRegularizationGraph()));
-    image_visualizer_->DrawFeatures(current_frame_->Keypoints());
+    if (image_visualizer_) {
+      image_visualizer_->DrawCurrentFrame(*current_frame_);
+      image_visualizer_->DrawCurrentFrame(*current_frame_);
+      image_visualizer_->DrawRegularizationGraph(
+          *current_frame_, *(map_->GetRegularizationGraph()));
+      image_visualizer_->DrawFeatures(current_frame_->Keypoints());
+    }
   }
 }
 
@@ -129,7 +138,7 @@ Tracking::TrackingStatus Tracking::GetTrackingStatus() const {
 void Tracking::ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
                                std::vector<cv::KeyPoint>& keypoints) {
   // Extract features.
-  feature_extractor_->Extract(im, keypoints);
+  feature_extractor_->Extract(im, mask, keypoints);
 
   // Mask out points.
   vector<cv::KeyPoint> masked_keypoints;
@@ -151,7 +160,8 @@ void Tracking::MonocularMapInitialization(const cv::Mat& im_left,
       monocular_map_initializer_->ProcessNewImage(im_left, im_clahe, mask);
 
   if (!initialization_status.ok()) {
-    LOG(INFO) << initialization_status.status().message();
+    LOG(WARNING) << "Monocular initialization deferred: "
+                 << initialization_status.status().message();
     return;
   }
 
@@ -235,87 +245,44 @@ void Tracking::MonocularMapInitialization(const cv::Mat& im_left,
   tracking_status_ = TRACKING;
 }
 
-void Tracking::StereoMapInitialization(const cv::Mat& im_left,
-                                       const cv::Mat& im_right,
-                                       const cv::Mat& mask,
-                                       const cv::Mat& im_clahe) {
-  current_frame_->Clear();
-
-  vector<cv::KeyPoint> keypoints;
-  ExtractFeatures(im_clahe, mask, keypoints);
-
-  std::vector<Eigen::Vector3f> filtered_landmarks;
-  std::vector<cv::KeyPoint> filtered_keypoints;
-
-  auto stereo_matcher = StereoPatternMatching(calibration_, 3886.37);
-  for (int idx = 0; idx < keypoints.size(); idx++) {
-    auto landmark =
-        stereo_matcher.computeStereo3D(keypoints[idx], im_left, im_right);
-    if (landmark.ok() && (*landmark).z() > 35.5f && (*landmark).z() < 70.5f) {
-      filtered_landmarks.push_back(*landmark);
-      filtered_keypoints.push_back(keypoints[idx]);
-    }
-  }
-
-  // Apply dbscan to remove further outliers
-  vector<int> labels = Dbscan3D(filtered_landmarks);
-
-  std::vector<float> depths;
-
-  for (int idx = 0; idx < labels.size(); idx++) {
-    if (labels[idx] == 0) {
-      depths.push_back(filtered_landmarks[idx].z());
-    }
-  }
-
-  const int median_idx = depths.size() / 2;
-  nth_element(depths.begin(), depths.begin() + median_idx, depths.end());
-  float median_depth = depths[median_depth];
-  const float scale = 1.f;
-
-  current_frame_->MutableCameraTransformationWorld().translation() *= scale;
-
-  for (int idx = 0; idx < labels.size(); idx++) {
-    if (labels[idx] == 0) {
-      auto mappoint = map_->CreateAndInsertMapPoint(
-          filtered_landmarks[idx] * scale, filtered_keypoints[idx].class_id);
-      current_frame_->InsertObservation(filtered_keypoints[idx],
-                                        filtered_landmarks[idx],
-                                        mappoint->GetId(), TRACKED_WITH_3D);
-    }
-  }
-
-  map_->SetLastFrame(current_frame_);
-
-  // Initialize regularization graph.
-  map_->InitializeRegularizationGraph(10.5);
-  map_->SetMapScale(1.f);
-
-  // Set reference image to the KLT tracker.
-  klt_tracker_.SetReferenceImage(im_left, current_frame_->Keypoints());
-
-  // Save MapPoint photometric information
-  for (const auto& [mappoint_id, idx] : current_frame_->MapPointIdToIndex()) {
-    LucasKanadeTracker::PhotometricInformation photometric_information =
-        klt_tracker_.GetPhotometricInformationOfPoint(idx);
-
-    map_->GetMapPoint(mappoint_id)
-        ->SetPhotometricInformation(photometric_information);
-  }
-
-  // Create Keyframe from the current frame.
-  auto keyframe = make_shared<KeyFrame>(*current_frame_);
-
-  // Insert KeyFrame in the map.
-  map_->InsertKeyFrame(keyframe);
-
-  tracking_status_ = TRACKING;
-}
-
 absl::flat_hash_set<ID> Tracking::TrackCameraAndDeformation(
     const cv::Mat& im, const cv::Mat& mask) {
   // Perform data association.
+  int tracked_before_klt =
+      current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size();
+  LOG(INFO) << "[KLT Tracking] Points before KLT: " << tracked_before_klt;
+
   DataAssociation(im, mask);
+
+  int tracked_after_klt =
+      current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size();
+  int bad_features = 0, out_of_bounds = 0, bad_displacement = 0, low_ssim = 0;
+
+  const auto& statuses = current_frame_->LandmarkStatuses();
+  for (auto status : statuses) {
+    if (status == BAD_FEATURE)
+      bad_features++;
+    else if (status == OUT_IMAGE_BOUNDARIES)
+      out_of_bounds++;
+    else if (status == BAD)
+      bad_displacement++;
+  }
+
+  // Low SSIM is tracked differently, we can estimate it
+  int total_failed = tracked_before_klt - tracked_after_klt;
+  low_ssim = total_failed - bad_features - out_of_bounds - bad_displacement;
+  if (low_ssim < 0) low_ssim = 0;
+
+  LOG(INFO) << "[KLT Tracking] Results - Tracked: " << tracked_after_klt
+            << " (was " << tracked_before_klt << ")"
+            << " | Failures: BadFeature=" << bad_features
+            << " OutOfBounds=" << out_of_bounds
+            << " BadDisp=" << bad_displacement << " LowSSIM=" << low_ssim
+            << " KLT params: window=" << options_.klt_window_size
+            << " levels=" << options_.klt_max_level
+            << " iters=" << options_.klt_max_iters
+            << " minSSIM=" << options_.klt_min_SSIM
+            << " minEigTh=" << options_.klt_min_eig_th;
 
   // Coarse camera pose estimation.
   CameraPoseEstimation();
@@ -344,6 +311,11 @@ void Tracking::CameraPoseEstimation() {
 }
 
 absl::flat_hash_set<ID> Tracking::CameraPoseAndDeformationEstimation() {
+  int tracked_3d =
+      current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size();
+  LOG(INFO) << "[Deformation Optimization] Starting with tracked_3d="
+            << tracked_3d;
+
   // Do optimization.
   auto lost_mappoint_ids = CameraPoseAndDeformationOptimization(
       *current_frame_, map_, previous_camera_transform_world_,
@@ -543,8 +515,6 @@ void Tracking::PointReuse(const cv::Mat& im, const cv::Mat& mask,
 
     reused_landmarks++;
   }
-
-  LOG(INFO) << "Reused landmarks: " << reused_landmarks;
 }
 
 void Tracking::UpdateTriangulatedPoints() {

@@ -40,7 +40,8 @@ class ShiTomasi : public Feature {
   ~ShiTomasi();
 
   // Extracts corners following the Shi-Tomasi corner detection algorithm
-  void Extract(const cv::Mat& im, std::vector<cv::KeyPoint>& vKeys) override;
+  void Extract(const cv::Mat& im, const cv::Mat& mask,
+               std::vector<cv::KeyPoint>& vKeys) override;
 
   void SetnonMaxSuppresionWindow(int window_Size);
 

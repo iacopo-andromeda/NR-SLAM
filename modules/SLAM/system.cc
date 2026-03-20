@@ -38,7 +38,7 @@ System::System(const string settings_file_path) {
   LOG(INFO) << *settings_;
 
   // Initialize image processing stuff
-  clahe_ = cv::createCLAHE(3.0, cv::Size(8, 8));
+  clahe_ = cv::createCLAHE(2.0, cv::Size(8, 8));
   masker_ = settings_->getMasker();
 
   // Create map
@@ -46,16 +46,13 @@ System::System(const string settings_file_path) {
   map_options.max_temporal_buffer_size = 20;
   map_ = make_shared<Map>(map_options);
 
-  StereoLucasKanade::Options stereo_matcher_options;
-  stereo_matcher_options.klt_window_size = 21;
-  stereo_matcher_options.klt_max_level = 4;
-  stereo_matcher_options.klt_max_iters = 10;
-  stereo_matcher_options.klt_epsilon = 0.0001;
-  stereo_matcher_options.klt_min_eig_th = 0.0001;
-  stereo_matcher_options.klt_min_SSIM = 0.5;
-
-  stereo_matcher_ = make_shared<StereoLucasKanade>(
-      stereo_matcher_options, settings_->getCalibration(), settings_->getBf());
+  // StereoLucasKanade::Options stereo_matcher_options;
+  // stereo_matcher_options.klt_window_size = 21;
+  // stereo_matcher_options.klt_max_level = 4;
+  // stereo_matcher_options.klt_max_iters = 10;
+  // stereo_matcher_options.klt_epsilon = 0.0001;
+  // stereo_matcher_options.klt_min_eig_th = 0.0001;
+  // stereo_matcher_options.klt_min_SSIM = 0.5;
 
   stereo_pattern_matcher_ = make_shared<StereoPatternMatching>(
       settings_->getCalibration(), settings_->getBf());
@@ -71,15 +68,15 @@ System::System(const string settings_file_path) {
 
   map_visualizer_ = make_unique<MapVisualizer>(map_visualizer_options, map_);
 
-  map_visualizer_thread_ =
-      make_unique<thread>(&MapVisualizer::Run, map_visualizer_.get());
+  // map_visualizer_thread_ =
+  //     make_unique<thread>(&MapVisualizer::Run, map_visualizer_.get());
 
   // Initialize image visualizer.
   ImageVisualizer::Options image_visualizer_options;
   image_visualizer_options.wait_for_user_button = !settings_->GetAutoplay();
   image_visualizer_options.image_save_path =
       settings_->GetImageVisualizerPath();
-  image_visualizer_ = make_shared<ImageVisualizer>(image_visualizer_options);
+  // image_visualizer_ = make_shared<ImageVisualizer>(image_visualizer_options);
 
   // Initialize Tracking.
   Tracking::Options tracking_options;
@@ -94,9 +91,9 @@ System::System(const string settings_file_path) {
   // Time profiler.
   time_profiler_ = make_unique<TimeProfiler>();
 
-  tracker_ = make_unique<Tracking>(tracking_options, map_,
-                                   settings_->getCalibration(), stereo_matcher_,
-                                   image_visualizer_, time_profiler_.get());
+  tracker_ =
+      make_unique<Tracking>(tracking_options, map_, settings_->getCalibration(),
+                            image_visualizer_, time_profiler_.get());
 
   // Initialize Mapping.
   Mapping::Options mapping_options;
@@ -117,7 +114,7 @@ System::~System() {
   map_visualizer_->SetFinish();
 
   // Wait until is done
-  map_visualizer_thread_->join();
+  // map_visualizer_thread_->join();
 }
 
 void System::TrackImage(const cv::Mat& im) {
@@ -126,7 +123,8 @@ void System::TrackImage(const cv::Mat& im) {
   cv::Mat processed_image = ImageProcessing(im, im_gray);
 
   // Insert image in the image visualizer.
-  image_visualizer_->SetCurrentImage(im, processed_image);
+  if (image_visualizer_)
+    image_visualizer_->SetCurrentImage(im, processed_image);
 
   // Generate image mask.
   auto masks = masker_->GetAllMasks(im_gray);
@@ -138,7 +136,7 @@ void System::TrackImage(const cv::Mat& im) {
   mapper_->DoMapping();
 
   // Draw images.
-  image_visualizer_->UpdateWindows();
+  if (image_visualizer_) image_visualizer_->UpdateWindows();
 }
 
 void System::TrackImageWithStereo(const cv::Mat& im_left,

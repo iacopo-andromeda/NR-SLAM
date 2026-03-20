@@ -18,24 +18,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NRSLAM_PIN_HOLE_H
-#define NRSLAM_PIN_HOLE_H
+#ifndef NRSLAM_DISTORTED_PIN_HOLE_H
+#define NRSLAM_DISTORTED_PIN_HOLE_H
 
-#include <assert.h>
-
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
 #include <vector>
 
 #include "camera_model.h"
 
-class PinHole : public CameraModel {
+class DistortedPinHole : public CameraModel {
  public:
-  PinHole() { calibration_parameters_.resize(4); }
+  DistortedPinHole();
 
-  PinHole(const std::vector<float> calibration_parameters)
-      : CameraModel(calibration_parameters) {
-    assert(calibration_parameters_.size() == 4);
-  }
+  DistortedPinHole(const std::vector<float> calibration_parameters);
 
   void Project(const Eigen::Vector3f& landmark_position,
                Eigen::Vector2f& pixel_position);
@@ -50,6 +45,12 @@ class PinHole : public CameraModel {
                             Eigen::Matrix<float, 3, 2>& unprojection_jacobian);
 
   Eigen::Matrix3f ToIntrinsicsMatrix();
+
+ private:
+  cv::Mat intrinsics_matrix_;
+  cv::Mat dist_coeffs_;
+  cv::Mat rvec_;
+  cv::Mat tvec_;
 };
 
-#endif  // NRSLAM_PIN_HOLE_H
+#endif  // NRSLAM_DISTORTED_PIN_HOLE_H

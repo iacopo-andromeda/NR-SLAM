@@ -60,6 +60,8 @@ set(CALIBRATION_SOURCES
         ${root}/calibration/camera_model.h
         ${root}/calibration/kannala_brandt_8.h
         ${root}/calibration/pin_hole.h
+        ${root}/calibration/distorted_pin_hole.h
+        ${root}/calibration/distorted_pin_hole.cc
         )
 
 set(DATASETS_SOURCES
@@ -74,9 +76,11 @@ set(DATASETS_SOURCES
         )
 
 set(FEATURES_SOURCES
-        ${root}/features/shi_tomasi.cc
         ${root}/features/feature.h
         ${root}/features/shi_tomasi.h
+        ${root}/features/shi_tomasi.cc
+        ${root}/features/shi_tomasi_cv.h
+        ${root}/features/shi_tomasi_cv.cc
         )
 
 set(MAP_SOURCES

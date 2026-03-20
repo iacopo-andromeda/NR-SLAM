@@ -21,6 +21,7 @@
 #include "settings.h"
 
 #include "absl/log/log.h"
+#include "calibration/distorted_pin_hole.h"
 #include "calibration/kannala_brandt_8.h"
 #include "calibration/pin_hole.h"
 #include "utilities/types_conversions.h"
@@ -116,6 +117,22 @@ Settings::Settings(const std::string& configFile) {
     vCalibration = {fx, fy, cx, cy, k0, k1, k2, k3};
 
     calibration_ = shared_ptr<CameraModel>(new KannalaBrandt8(vCalibration));
+  } else if (cameraModel == "DistortedPinHole") {
+    float fx = fSettings["Camera.fx"];
+    float fy = fSettings["Camera.fy"];
+    float cx = fSettings["Camera.cx"];
+    float cy = fSettings["Camera.cy"];
+
+    // 5 distortion coefficients
+    float k1 = fSettings["Camera.k1"];
+    float k2 = fSettings["Camera.k2"];
+    float p1 = fSettings["Camera.p1"];
+    float p2 = fSettings["Camera.p2"];
+    float k3 = fSettings["Camera.k3"];
+
+    vCalibration = {fx, fy, cx, cy, k1, k2, p1, p2, k3};
+
+    calibration_ = shared_ptr<CameraModel>(new DistortedPinHole(vCalibration));
   } else {
     LOG(ERROR) << "Error: " << cameraModel << " not known";
     exit(-1);

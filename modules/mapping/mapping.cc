@@ -45,7 +45,7 @@ void Mapping::DoMapping() {
   // Get next KeyFrame to process
   auto keyframe = map_->GetNextUnmappedKeyFrame();
 
-  if (true && keyframe) {
+  if (keyframe) {
     // If the KeyFrame is valid, do KeyFrame mapping.
     KeyFrameMapping();
 

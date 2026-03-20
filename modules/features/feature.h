@@ -32,7 +32,7 @@ class Feature {
    * Computes KeyPoints in the given image. To be implemented by the children
    * classes
    */
-  virtual void Extract(const cv::Mat& im,
+  virtual void Extract(const cv::Mat& im, const cv::Mat& mask,
                        std::vector<cv::KeyPoint>& keypoints) = 0;
 
  private:

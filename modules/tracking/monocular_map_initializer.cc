@@ -66,6 +66,8 @@ MonocularMapInitializer::ProcessNewImage(const cv::Mat& im,
   DataAssociation(im, im_clahe, mask);
 
   if (internal_status_ == RECENTLY_RESET) {
+    LOG(WARNING)
+        << "Initializer frame path: reset reference and skip initialization";
     return absl::InternalError("Just reset");
   }
 
@@ -76,7 +78,8 @@ MonocularMapInitializer::ProcessNewImage(const cv::Mat& im,
   auto initialization_results_status = RigidInitialization();
 
   if (!initialization_results_status.ok()) {
-    LOG(INFO) << initialization_results_status.status().message();
+    LOG(WARNING) << "Rigid initialization failed: "
+                 << initialization_results_status.status().message();
     return absl::InternalError("Rigid Initialization failed");
   }
 
@@ -97,10 +100,10 @@ void MonocularMapInitializer::ResetInitialization(const cv::Mat& im,
   feature_tracks_.max_feature_track_lenght = 0;
   feature_tracks_.feature_id_to_feature_track.clear();
 
-  ExtractFeatures(im, mask, current_keypoints_);
+  ExtractFeatures(im_clahe, mask, current_keypoints_);
 
   // Initialize KLT.
-  klt_tracker_.SetReferenceImage(im, current_keypoints_);
+  klt_tracker_.SetReferenceImage(im_clahe, current_keypoints_);
 
   current_keypoint_statuses_.resize(current_keypoints_.size());
   fill(current_keypoint_statuses_.begin(), current_keypoint_statuses_.end(),
@@ -125,9 +128,12 @@ void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
         klt_tracker_.Track(im, current_keypoints_, current_keypoint_statuses_,
                            true, options_.klt_min_SSIM, mask);
 
-    LOG(INFO) << "Number of matches: " << n_tracks_in_image_;
-
-    if (n_tracks_in_image_ < 100) {
+    if (n_tracks_in_image_ <
+        EssentialMatrixInitialization::MINIMUM_TRIANGULATED_POINTS) {
+      LOG(WARNING)
+          << "Data association reset: tracked features " << n_tracks_in_image_
+          << " below minimum "
+          << EssentialMatrixInitialization::MINIMUM_TRIANGULATED_POINTS;
       ResetInitialization(im, im_clahe, mask);
     } else {
       images_from_last_reference_++;
@@ -135,6 +141,8 @@ void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
 
       // Update KLT reference image if needed.
       if (images_from_last_reference_ > 30) {
+        LOG(WARNING)
+            << "Data association reset: reference age exceeded 30 frames";
         ResetInitialization(im, im_clahe, mask);
 
         images_from_last_reference_ = 0;
@@ -150,19 +158,19 @@ void MonocularMapInitializer::ExtractFeatures(
     const cv::Mat& im, const cv::Mat& mask,
     std::vector<cv::KeyPoint>& keypoints) {
   // Extract features.
-  feature_extractor_->Extract(im, keypoints);
+  feature_extractor_->Extract(im, mask, keypoints);
 
-  // Mask out points.
-  vector<cv::KeyPoint> masked_keypoints;
-  for (size_t i = 0; i < keypoints.size(); i++) {
-    if (!mask.at<uchar>(keypoints[i].pt)) {
-      continue;
-    } else {
-      masked_keypoints.push_back(keypoints[i]);
-    }
-  }
+  // // Mask out points.
+  // vector<cv::KeyPoint> masked_keypoints;
+  // for (size_t i = 0; i < keypoints.size(); i++) {
+  //   if (!mask.at<uchar>(keypoints[i].pt)) {
+  //     continue;
+  //   } else {
+  //     masked_keypoints.push_back(keypoints[i]);
+  //   }
+  // }
 
-  keypoints = masked_keypoints;
+  // keypoints = masked_keypoints;
 }
 
 void MonocularMapInitializer::AddFeatureTracks(
@@ -229,7 +237,8 @@ std::vector<int> MonocularMapInitializer::FeatureTracksClustering() {
   vector<int> point_labels = DbscanND(plain_feature_tracks);
 
   // Draw clustered tracks.
-  image_visualizer_->DrawClusteredOpticalFlow(feature_tracks, point_labels);
+  if (image_visualizer_)
+    image_visualizer_->DrawClusteredOpticalFlow(feature_tracks, point_labels);
 
   return point_labels;
 }

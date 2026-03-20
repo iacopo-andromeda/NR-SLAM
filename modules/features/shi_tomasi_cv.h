@@ -18,23 +18,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "circle_filter.h"
+#ifndef NRSLAM_SHI_TOMASI_CV_H
+#define NRSLAM_SHI_TOMASI_CV_H
 
-#include <opencv2/imgproc.hpp>
+#include <fstream>
+#include <opencv2/core/core.hpp>
 
-cv::Mat CircleFilter::generateMask(const cv::Mat& im) {
-  cv::Mat mask = cv::Mat::zeros(im.size(), CV_8U);
+#include "feature.h"
+#include "opencv2/opencv.hpp"
 
-  auto cx = std::clamp(im.cols / 2 + cx_, 0, im.cols - 1);
-  auto cy = std::clamp(im.rows / 2 + cy_, 0, im.rows - 1);
+class ShiTomasiCV : public Feature {
+ public:
+  struct Options {
+    int maxCorners;
+    double qualityLevel;
+    double minDistance;
+    int blockSize = 3;
+    bool useHarrisDetector = false;
+    double k = 0.04;
+  };
 
-  auto r = std::min({cx, cy, im.cols - cx, im.rows - cy}) * 0.9;
+  ShiTomasiCV() = delete;
 
-  cv::circle(mask, cv::Point(cx, cy), r, cv::Scalar(255), cv::FILLED);
-  return mask;
-}
+  ShiTomasiCV(Options& options);
 
-std::string CircleFilter::getDescription() {
-  return std::string("Circle mask with parameters [cx=" + std::to_string(cx_) +
-                     ", cy=" + std::to_string(cy_) + "]");
-}
+  ~ShiTomasiCV();
+
+  // Extracts corners following the Shi-Tomasi corner detection algorithm
+  void Extract(const cv::Mat& im, const cv::Mat& mask,
+               std::vector<cv::KeyPoint>& vKeys) override;
+
+ private:
+  Options options_;
+  int n_seen_ = 0;
+  unsigned int next_feature_id_ = 0;
+};
+
+#endif  // NRSLAM_SHI_TOMASI_CV_H

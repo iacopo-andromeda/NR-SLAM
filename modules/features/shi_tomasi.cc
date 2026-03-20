@@ -37,7 +37,7 @@ ShiTomasi::~ShiTomasi() {
   scores.release();
 }
 
-void ShiTomasi::Extract(const cv::Mat& im,
+void ShiTomasi::Extract(const cv::Mat& im, const cv::Mat& mask,
                         std::vector<cv::KeyPoint>& keypoints) {
   if (im.cols != scores.cols || im.rows != scores.rows) {
     ResizeBuffers(im.size());

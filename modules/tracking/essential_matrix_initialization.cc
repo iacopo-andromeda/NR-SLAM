@@ -50,7 +50,10 @@ absl::Status EssentialMatrixInitialization::Initialize(
     const std::vector<LandmarkStatus>& keypoint_statuses, const int n_matches,
     Sophus::SE3f& camera_transform_world,
     std::vector<absl::StatusOr<Eigen::Vector3f>>& landmarks_position) {
+  LOG(INFO) << "[Initialize] n_matches: " << n_matches;
   if (n_matches < 8) {
+    LOG(WARNING) << "[Initialize] Not enough matches (" << n_matches
+                 << " < 8), aborting.";
     return absl::InternalError("Not enough matches");
   }
   // Set up input data.
@@ -79,6 +82,11 @@ absl::Status EssentialMatrixInitialization::Initialize(
   if (image_visualizer_)
     image_visualizer_->DrawFeatures(current_keypoints_, landmarks_position);
 
+  if (status.ok()) {
+    LOG(INFO) << "[Initialize] Initialization succeeded.";
+  } else {
+    LOG(WARNING) << "[Initialize] Initialization failed: " << status;
+  }
   return status;
 }
 
@@ -114,6 +122,8 @@ void EssentialMatrixInitialization::UnprojectTrackedFeatures() {
       n_tracked_points++;
     }
   }
+  LOG(INFO) << "[UnprojectTrackedFeatures] Tracked points: " << n_tracked_points
+            << " / " << feature_tracks_statuses_.size();
 }
 
 Eigen::Matrix3f EssentialMatrixInitialization::FindEssentialWithRANSAC(
@@ -144,6 +154,8 @@ Eigen::Matrix3f EssentialMatrixInitialization::FindEssentialWithRANSAC(
   const float inlier_fraction = 0.8;
   const float sucess_likelihood = 0.95;
   int max_iterations = ComputeMaxTries(inlier_fraction, sucess_likelihood);
+  LOG(INFO) << "[FindEssentialWithRANSAC] max_iterations: " << max_iterations
+            << ", n_matches: " << n_matches;
   int current_iteration = 0;
 
   // Do all iterations.
@@ -192,6 +204,8 @@ Eigen::Matrix3f EssentialMatrixInitialization::FindEssentialWithRANSAC(
 
   int score = ComputeScoreAndInliers(n_matches, best_E, inliers);
   n_inliers = score;
+  LOG(INFO) << "[FindEssentialWithRANSAC] best_score: " << best_score
+            << ", n_inliers after refit: " << n_inliers;
 
   return best_E;
 }
@@ -334,6 +348,9 @@ void EssentialMatrixInitialization::ReconstructCameras(
 
   // Choose the smallest rotation.
   R_good = (R_2.trace() > R_1.trace()) ? R_2 : R_1;
+  LOG(INFO) << "[ReconstructCameras] R_1 trace: " << R_1.trace()
+            << ", R_2 trace: " << R_2.trace()
+            << ", selected R trace: " << R_good.trace();
 
   // Get correct translation.
   float away = ((R_good * rays_1.transpose() - rays_2.transpose()).array() *
@@ -344,6 +361,7 @@ void EssentialMatrixInitialization::ReconstructCameras(
                    .sum();
 
   t = (signbit(away)) ? -t : t;
+  LOG(INFO) << "[ReconstructCameras] translation: " << t.transpose();
 
   camera_transform_world = Sophus::SE3f(R_good, t);
 }
@@ -378,7 +396,8 @@ absl::Status EssentialMatrixInitialization::ReconstructPoints(
 
   Eigen::Vector3f world_t_camera =
       camera_transform_world.inverse().translation();
-
+  // LOG(INFO) << "essential_matrix_inliers.size(): "
+  //           << essential_matrix_inliers.size();
   for (int idx = 0; idx < essential_matrix_inliers.size(); idx++) {
     if (essential_matrix_inliers[idx]) {
       N++;
@@ -465,13 +484,31 @@ absl::Status EssentialMatrixInitialization::ReconstructPoints(
     }
   }
 
-  if (n_triangulated < 100) {
-    return absl::InternalError("Not enough triangulated landmarks");
+  LOG(INFO) << "[ReconstructPoints] N: " << N
+            << ", triangulated: " << n_triangulated
+            << ", low_parallax: " << n_parallax
+            << ", reprojection_err_1: " << n_reprojection_error_1
+            << ", reprojection_err_2: " << n_reprojection_error_2
+            << ", triangulation_err: " << n_triangulation_error
+            << ", neg_depth_1: " << n_depth_1 << ", neg_depth_2: " << n_depth_2;
+
+  if (n_triangulated < MINIMUM_TRIANGULATED_POINTS) {
+    LOG(WARNING) << "[ReconstructPoints] Not enough triangulated landmarks: "
+                 << n_triangulated << " / " << MINIMUM_TRIANGULATED_POINTS;
+    return absl::InternalError("Not enough triangulated landmarks " +
+                               to_string(n_triangulated) + " out of " +
+                               to_string(MINIMUM_TRIANGULATED_POINTS));
   }
 
   if (n_parallax > N * 0.25) {
-    return absl::InternalError("Not enough triangulated landmarks");
+    LOG(WARNING) << "[ReconstructPoints] Too many low-parallax points: "
+                 << n_parallax << " > " << N * 0.25;
+    return absl::InternalError(
+        "Not enough triangulated landmarks " + to_string(n_parallax) +
+        " with low parallax out of " + to_string(N * 0.25));
   }
 
+  LOG(INFO) << "[ReconstructPoints] Reconstruction succeeded with "
+            << n_triangulated << " landmarks.";
   return absl::OkStatus();
 }

@@ -152,6 +152,21 @@ void CameraPoseOptimization(
 absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     Frame& current_frame, std::shared_ptr<Map> map,
     const Sophus::SE3f& previous_camera_transform_world, const float scale) {
+  vector<cv::KeyPoint> keypoints =
+      current_frame.GetKeypointsWithStatus({TRACKED_WITH_3D});
+  vector<Eigen::Vector3f> landmark_positions =
+      current_frame.GetLandmarkPositionsWithStatus({TRACKED_WITH_3D});
+  vector<ID> mappoints_ids =
+      current_frame.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
+  const int points_in_optimization = keypoints.size();
+
+  if (points_in_optimization == 0) {
+    LOG(WARNING) << "[CameraPoseAndDeformationOptimization] No points to "
+                    "optimize (points_in_optimization=0)";
+    absl::flat_hash_set<ID> empty_set;
+    return empty_set;
+  }
+
   // Create optimizer.
   g2o::SparseOptimizer optimizer;
   std::unique_ptr<g2o::BlockSolverX::LinearSolverType> linearSolver =
@@ -177,14 +192,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
 
   optimizer.addVertex(camera_pose_vertex);
 
-  vector<cv::KeyPoint> keypoints =
-      current_frame.GetKeypointsWithStatus({TRACKED_WITH_3D});
-  vector<Eigen::Vector3f> landmark_positions =
-      current_frame.GetLandmarkPositionsWithStatus({TRACKED_WITH_3D});
-  vector<ID> mappoints_ids =
-      current_frame.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
   absl::flat_hash_map<ID, int> mappoint_id_to_index;
-  const int points_in_optimization = keypoints.size();
 
   auto regularization_graph = map->GetRegularizationGraph();
 
@@ -443,20 +451,26 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     deformation_magnitudes.push_back(deformation.norm());
   }
 
-  vector<float> sorted_deformation_magnitudes = deformation_magnitudes;
-  sort(sorted_deformation_magnitudes.begin(),
-       sorted_deformation_magnitudes.end());
-  float interquartileRange =
-      sorted_deformation_magnitudes[(int)(sorted_deformation_magnitudes.size() *
-                                          0.75f)] -
-      sorted_deformation_magnitudes[(int)(sorted_deformation_magnitudes.size() *
-                                          0.25f)];
-  float q1 = sorted_deformation_magnitudes[(
-      int)(sorted_deformation_magnitudes.size() * 0.25f)];
-  float q3 = sorted_deformation_magnitudes[(
-      int)(sorted_deformation_magnitudes.size() * 0.75f)];
+  float q1 = 0.0f;
+  float q3 = 0.0f;
+  float th_ = 0.0f;
 
-  float th_ = 1.5f * interquartileRange;
+  if (!deformation_magnitudes.empty()) {
+    vector<float> sorted_deformation_magnitudes = deformation_magnitudes;
+    sort(sorted_deformation_magnitudes.begin(),
+         sorted_deformation_magnitudes.end());
+    float interquartileRange =
+        sorted_deformation_magnitudes[(
+            int)(sorted_deformation_magnitudes.size() * 0.75f)] -
+        sorted_deformation_magnitudes[(
+            int)(sorted_deformation_magnitudes.size() * 0.25f)];
+    q1 = sorted_deformation_magnitudes[(
+        int)(sorted_deformation_magnitudes.size() * 0.25f)];
+    q3 = sorted_deformation_magnitudes[(
+        int)(sorted_deformation_magnitudes.size() * 0.75f)];
+
+    th_ = 1.5f * interquartileRange;
+  }
 
   // Update point positions.
   for (int idx = 0; idx < points_in_optimization; idx++) {
@@ -498,12 +512,16 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     ID mappoint_id = mappoints_ids[idx];
   }
 
-  const int median_idx = deformation_magnitudes.size() / 2;
-  nth_element(deformation_magnitudes.begin(),
-              deformation_magnitudes.begin() + median_idx,
-              deformation_magnitudes.end());
+  if (!deformation_magnitudes.empty()) {
+    const int median_idx = deformation_magnitudes.size() / 2;
+    nth_element(deformation_magnitudes.begin(),
+                deformation_magnitudes.begin() + median_idx,
+                deformation_magnitudes.end());
 
-  current_frame.SetDeformationMaginitud(deformation_magnitudes[median_idx]);
+    current_frame.SetDeformationMaginitud(deformation_magnitudes[median_idx]);
+  } else {
+    current_frame.SetDeformationMaginitud(0.0f);
+  }
 
   // Update regularization graph.
   for (int idx = 0; idx < points_in_optimization; idx++) {

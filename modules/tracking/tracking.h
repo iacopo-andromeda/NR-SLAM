@@ -27,8 +27,6 @@
 #include "map/frame.h"
 #include "map/map.h"
 #include "matching/lucas_kanade_tracker.h"
-#include "stereo/stereo_lucas_kanade.h"
-#include "stereo/stereo_pattern_matching.h"
 #include "tracking/monocular_map_initializer.h"
 #include "utilities/time_profiler.h"
 #include "visualization/image_visualizer.h"
@@ -54,7 +52,6 @@ class Tracking {
 
   Tracking(const Options options, std::shared_ptr<Map> map,
            std::shared_ptr<CameraModel> calibration,
-           std::shared_ptr<StereoLucasKanade> stereo_matcher,
            std::shared_ptr<ImageVisualizer> image_visualizer,
            TimeProfiler* time_profiler);
 
@@ -71,9 +68,6 @@ class Tracking {
 
   void MonocularMapInitialization(const cv::Mat& im_left, const cv::Mat& mask,
                                   const cv::Mat& im_clahe);
-
-  void StereoMapInitialization(const cv::Mat& im_left, const cv::Mat& im_right,
-                               const cv::Mat& mask, const cv::Mat& im_clahe);
 
   absl::flat_hash_set<ID> TrackCameraAndDeformation(const cv::Mat& im,
                                                     const cv::Mat& mask);
@@ -115,9 +109,6 @@ class Tracking {
   LucasKanadeTracker klt_tracker_;
 
   std::shared_ptr<Frame> current_frame_;
-
-  // std::shared_ptr<StereoPatternMatching> stereo_matcher_;
-  std::shared_ptr<StereoLucasKanade> stereo_matcher_;
 
   Sophus::SE3f motion_model_;
 

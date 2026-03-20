@@ -115,18 +115,10 @@ absl::flat_hash_map<std::string, cv::Mat> Masker::GetAllMasks(
     auto mask = f->generateMask(im);
     all_masks[f->GetFilterName()] = mask;
 
-    cv::imshow("Mask for filter: " + f->GetFilterName(), mask);
-
     cv::bitwise_and(global_mask, mask, global_mask);
   }
-
-  cv::imshow("Global mask before erosion", global_mask);
-
   cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
   cv::erode(global_mask, global_mask, kernel);
-  cv::imshow("Global mask after erosion", global_mask);
-  cv::waitKey(1);
-  cv::destroyAllWindows();
 
   all_masks["Global"] = global_mask;
 

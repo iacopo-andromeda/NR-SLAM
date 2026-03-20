@@ -39,6 +39,8 @@ class EssentialMatrixInitialization {
     float epipolar_threshold;
   };
 
+  static constexpr int MINIMUM_TRIANGULATED_POINTS = 20;
+
   EssentialMatrixInitialization() = delete;
 
   // Constructor with the max number of expected features, the calibration and
