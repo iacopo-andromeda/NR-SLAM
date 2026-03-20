@@ -2,19 +2,22 @@ set -e
 
 BUILD_DIR="build"
 PARALLEL=8
+BUILD_TYPE="Release"
 
 show_help() {
 	cat <<EOF
-Usage: ./build.sh [--help] [--all] [--clean] [--target <name>]
+Usage: ./build.sh [--help] [--all] [--clean] [--dbg] [--target <name>]
 
 Options:
   --help            Show this help and available targets.
   --all             Build all targets (default when no action is provided).
   --clean           Clean build outputs.
+	--dbg             Configure and build with debug symbols (CMAKE_BUILD_TYPE=Debug).
   --target <name>   Build a specific target.
 
 Examples:
   ./build.sh --all
+	./build.sh --dbg --all
   ./build.sh --target nr_slam_mapping
   ./build.sh --clean
 EOF
@@ -35,6 +38,10 @@ while [ "$#" -gt 0 ]; do
 			;;
 		--clean)
 			ACTION="clean"
+			shift
+			;;
+		--dbg)
+			BUILD_TYPE="Debug"
 			shift
 			;;
 		--target)
@@ -61,7 +68,7 @@ fi
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
-cmake ..
+cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" ..
 
 case "${ACTION}" in
 	help)
