@@ -1,13 +1,25 @@
 %YAML:1.0
 
-# Camera model
-Camera.model: "PinHole"
+# # Camera model
+# Camera.model: "PinHole"
 
-# Camera calibration and distortion parameters
+# # Camera calibration and distortion parameters
+# Camera.fx: 461.91
+# Camera.fy: 461.91
+# Camera.cx: 341.0
+# Camera.cy: 173.06
+
+
+Camera.model: "DistortedPinHole"
 Camera.fx: 461.91
 Camera.fy: 461.91
 Camera.cx: 341.0
 Camera.cy: 173.06
+Camera.k1: -0.339
+Camera.k2: 1.848
+Camera.p1: 0.01929
+Camera.p2: 0.00561
+Camera.k3: -6.387
 
 Camera.radiansPerPixel: 0.0022
 
