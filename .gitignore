@@ -3,3 +3,4 @@ third_party/**/build
 third_party/**/bin
 third_party/**/lib
 .vscode
+data
