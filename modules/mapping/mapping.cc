@@ -58,7 +58,7 @@ void Mapping::DoMapping() {
 }
 
 void Mapping::KeyFrameMapping() {
-  LocalDeformableBundleAdjustment(map_, map_->GetMapScale());
+  LocalDeformableBundleAdjustment(map_, calibration_, map_->GetMapScale());
 }
 
 void Mapping::FrameMapping() {
@@ -74,8 +74,6 @@ void Mapping::LandmarkTriangulation() {
       temporal_buffer->GetTriangulationCandidatesIds();
 
   auto current_frame = map_->GetMutableLastFrame();
-
-  auto calibration = current_frame->GetCalibration();
 
   int triangulated_landmarks = 0;
 
@@ -138,10 +136,10 @@ void Mapping::LandmarkTriangulation() {
 
     // Unproject rays.
     Eigen::Vector3f current_ray =
-        calibration->Unproject(current_keypoint.pt.x, current_keypoint.pt.y)
+        calibration_->Unproject(current_keypoint.pt.x, current_keypoint.pt.y)
             .normalized();
     Eigen::Vector3f previous_ray =
-        calibration->Unproject(previous_keypoint.pt.x, previous_keypoint.pt.y)
+        calibration_->Unproject(previous_keypoint.pt.x, previous_keypoint.pt.y)
             .normalized();
 
     // Get camera poses.
@@ -183,7 +181,7 @@ void Mapping::LandmarkTriangulation() {
     }
 
     cv::Point2f projected_landmark_1 =
-        calibration->Project(landmark_position_1);
+        calibration_->Project(landmark_position_1);
 
     if (SquaredReprojectionError(previous_keypoint.pt, projected_landmark_1) >
         5.991) {
@@ -200,7 +198,7 @@ void Mapping::LandmarkTriangulation() {
     }
 
     cv::Point2f projected_landmark_2 =
-        calibration->Project(landmark_position_2);
+        calibration_->Project(landmark_position_1);
 
     if (SquaredReprojectionError(current_keypoint.pt, projected_landmark_2) >
         5.991) {

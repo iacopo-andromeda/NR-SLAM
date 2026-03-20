@@ -21,15 +21,18 @@
 #ifndef NRSLAM_G2O_OPTIMIZATION_H
 #define NRSLAM_G2O_OPTIMIZATION_H
 
+#include "calibration/camera_model.h"
 #include "map/frame.h"
 #include "map/map.h"
 #include "map/regularization_graph.h"
 
 void CameraPoseOptimization(
-    Frame& frame, const Sophus::SE3f& previous_camera_transform_world);
+    Frame& frame, std::shared_ptr<CameraModel> calibration,
+    const Sophus::SE3f& previous_camera_transform_world);
 
 absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     Frame& current_frame, std::shared_ptr<Map> map,
+    std::shared_ptr<CameraModel> calibration,
     const Sophus::SE3f& previous_camera_transform_world, const float scale);
 
 absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(
@@ -37,6 +40,7 @@ absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(
     std::shared_ptr<CameraModel> calibration, const float scale);
 
 void LocalDeformableBundleAdjustment(std::shared_ptr<Map> map,
+                                     std::shared_ptr<CameraModel> calibration,
                                      const float scale);
 
 #endif  // NRSLAM_G2O_OPTIMIZATION_H

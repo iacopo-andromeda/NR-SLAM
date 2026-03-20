@@ -36,31 +36,31 @@ class CameraModel {
 
   // Projects a given 3D point into the image.
   virtual void Project(const Eigen::Vector3f& landmark_position,
-                       Eigen::Vector2f& pixel_position) = 0;
+                       Eigen::Vector2f& pixel_position) const = 0;
 
   // Unprojects a given image 2D point into its projecting ray.
   virtual void Unproject(const Eigen::Vector2f& pixel_position,
-                         Eigen::Vector3f& projecting_ray) = 0;
+                         Eigen::Vector3f& projecting_ray) const = 0;
 
   // Computes the jacobian of the projection function.
   virtual void ProjectionJacobian(
       const Eigen::Vector3f& landmark_position,
-      Eigen::Matrix<float, 2, 3>& projection_jacobian) = 0;
+      Eigen::Matrix<float, 2, 3>& projection_jacobian) const = 0;
 
   // Computes the jacobian of the unprojection function.
   virtual void UnprojectionJacobian(
       const Eigen::Vector2f& pixel_position,
-      Eigen::Matrix<float, 3, 2>& unprojection_jacobian) = 0;
+      Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const = 0;
 
   // Returns the projection function of the calibration model: a 3 by 3 matrix
   // holding the camera parameters.
-  virtual Eigen::Matrix3f ToIntrinsicsMatrix() = 0;
+  virtual Eigen::Matrix3f ToIntrinsicsMatrix() const = 0;
 
   // Returns the calibration parameters.
-  std::vector<float> GetParameters() { return calibration_parameters_; }
+  std::vector<float> GetParameters() const { return calibration_parameters_; }
 
   // Gets the i-th calibration parameter of the camera model.
-  float GetParameter(const int i) { return calibration_parameters_[i]; }
+  float GetParameter(const int i) const { return calibration_parameters_[i]; }
 
   // Sets the i-th calibration parameter of the camera model.
   void SetParameter(const float p, const int i) {
@@ -68,10 +68,10 @@ class CameraModel {
   }
 
   // Returns the calibration model size.
-  int getNumberOfParameters() { return calibration_parameters_.size(); }
+  int getNumberOfParameters() const { return calibration_parameters_.size(); }
 
   // Method overloads to allow different data structures.
-  cv::Point2f Project(const Eigen::Vector3f& landmark_position) {
+  cv::Point2f Project(const Eigen::Vector3f& landmark_position) const {
     Eigen::Vector2f pixel_position;
 
     this->Project(landmark_position.cast<float>(), pixel_position);
@@ -80,7 +80,7 @@ class CameraModel {
     return pixel_postion_opencv;
   }
 
-  Eigen::Vector2d Project(Eigen::Vector3d& landmark_position) {
+  Eigen::Vector2d Project(const Eigen::Vector3d& landmark_position) const {
     Eigen::Vector2f pixel_position;
 
     this->Project(landmark_position.cast<float>(), pixel_position);
@@ -89,7 +89,7 @@ class CameraModel {
   }
 
   Eigen::Matrix<float, 1, 3> Unproject(const float pixel_u_coordinate,
-                                       const float pixel_v_coordinate) {
+                                       const float pixel_v_coordinate) const {
     Eigen::Vector2f pixel_position(pixel_u_coordinate, pixel_v_coordinate);
     Eigen::Vector3f projecting_ray;
 
@@ -98,7 +98,8 @@ class CameraModel {
     return projecting_ray;
   }
 
-  Eigen::Matrix<float, 1, 3> Unproject(Eigen::Vector2f& pixel_position) {
+  Eigen::Matrix<float, 1, 3> Unproject(
+      const Eigen::Vector2f& pixel_position) const {
     Eigen::Vector3f projecting_ray;
 
     this->Unproject(pixel_position, projecting_ray);
@@ -106,7 +107,7 @@ class CameraModel {
     return projecting_ray;
   }
 
-  Eigen::Matrix<float, 1, 3> Unproject(cv::Point2f pixel_position) {
+  Eigen::Matrix<float, 1, 3> Unproject(cv::Point2f pixel_position) const {
     Eigen::Vector2f pixel_position_eigen(pixel_position.x, pixel_position.y);
     Eigen::Vector3f projecting_ray;
 
@@ -116,7 +117,7 @@ class CameraModel {
   }
 
   Eigen::Matrix<float, 2, 3> ProjectionJacobian(
-      Eigen::Vector3f& landmark_position) {
+      const Eigen::Vector3f& landmark_position) const {
     Eigen::Matrix<float, 2, 3> projection_jacobian;
 
     this->ProjectionJacobian(landmark_position, projection_jacobian);
@@ -125,7 +126,7 @@ class CameraModel {
   }
 
   Eigen::Matrix<double, 2, 3> ProjectionJacobian(
-      Eigen::Vector3d& landmark_position) {
+      const Eigen::Vector3d& landmark_position) const {
     Eigen::Matrix<float, 2, 3> projection_jacobian;
 
     this->ProjectionJacobian(landmark_position.cast<float>(),
@@ -135,7 +136,7 @@ class CameraModel {
   }
 
   // Returns a string with the camera model parameters.
-  std::string ToString() {
+  std::string ToString() const {
     std::string s;
     for (auto parameter : calibration_parameters_) {
       s += std::to_string(parameter) + " ";

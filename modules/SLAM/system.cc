@@ -106,7 +106,8 @@ System::System(const string settings_file_path) {
   frame_evaluator_options.results_file_path = settings_->GetEvaluationPath();
   frame_evaluator_options.precomputed_depth_ = true;
   frame_evaluator_ = make_unique<FrameEvaluator>(
-      frame_evaluator_options, stereo_pattern_matcher_, map_visualizer_.get());
+      frame_evaluator_options, settings_->getCalibration(),
+      stereo_pattern_matcher_, map_visualizer_.get());
 }
 
 System::~System() {

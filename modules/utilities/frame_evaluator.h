@@ -35,7 +35,7 @@ class FrameEvaluator {
 
   FrameEvaluator() = delete;
 
-  FrameEvaluator(Options& options,
+  FrameEvaluator(Options& options, std::shared_ptr<CameraModel> calibration,
                  std::shared_ptr<StereoMatcher> stereo_matcher,
                  MapVisualizer* map_visualizer);
 
@@ -75,6 +75,8 @@ class FrameEvaluator {
   Options options_;
 
   std::shared_ptr<StereoMatcher> stereo_matcher_;
+
+  std::shared_ptr<CameraModel> calibration_;
 
   MapVisualizer* map_visualizer_;
 

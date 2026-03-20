@@ -21,6 +21,7 @@
 #ifndef NRSLAM_MAPPING_H
 #define NRSLAM_MAPPING_H
 
+#include "calibration/camera_model.h"
 #include "map/map.h"
 #include "utilities/time_profiler.h"
 

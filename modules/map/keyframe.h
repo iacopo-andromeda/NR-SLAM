@@ -57,8 +57,6 @@ class KeyFrame {
 
   const absl::flat_hash_map<ID, int>& MapPointIdToIndex() const;
 
-  std::shared_ptr<CameraModel> GetCalibration();
-
   std::vector<ID> GetMapPointsIdsWithStatus(
       const absl::flat_hash_set<LandmarkStatus> statuses);
 
@@ -78,8 +76,6 @@ class KeyFrame {
 
   absl::flat_hash_map<ID, int> mappoint_id_to_index_;
   absl::flat_hash_map<int, ID> index_to_mappoint_id_;
-
-  std::shared_ptr<CameraModel> calibration_;
 
   Sophus::SE3f camera_transformation_world_;
 

@@ -54,8 +54,6 @@ Tracking::Tracking(const Tracking::Options options, std::shared_ptr<Map> map,
 
   current_frame_ = make_shared<Frame>();
 
-  current_frame_->SetCalibration(calibration);
-
   MonocularMapInitializer::Options monocular_map_initializer_options;
   monocular_map_initializer_options.klt_window_size = 21;
   monocular_map_initializer_options.klt_max_level = 4;
@@ -209,8 +207,6 @@ void Tracking::MonocularMapInitialization(const cv::Mat& im_left,
                                       current_landmark_position, mappoint_id,
                                       TRACKED_WITH_3D);
   }
-  reference_frame.SetCalibration(calibration_);
-
   reference_frame.MutableCameraTransformationWorld() = Sophus::SE3f();
   initialization_results.camera_transform_world.translation() =
       initialization_results.camera_transform_world.translation() * scale;
@@ -307,7 +303,8 @@ void Tracking::CameraPoseEstimation() {
       current_frame_->CameraTransformationWorld();
 
   // Do optimization.
-  CameraPoseOptimization(*current_frame_, previous_camera_transform_world_);
+  CameraPoseOptimization(*current_frame_, calibration_,
+                         previous_camera_transform_world_);
 }
 
 absl::flat_hash_set<ID> Tracking::CameraPoseAndDeformationEstimation() {
@@ -318,7 +315,7 @@ absl::flat_hash_set<ID> Tracking::CameraPoseAndDeformationEstimation() {
 
   // Do optimization.
   auto lost_mappoint_ids = CameraPoseAndDeformationOptimization(
-      *current_frame_, map_, previous_camera_transform_world_,
+      *current_frame_, map_, calibration_, previous_camera_transform_world_,
       map_->GetMapScale());
 
   // Update motion model.

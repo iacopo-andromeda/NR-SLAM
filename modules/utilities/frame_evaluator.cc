@@ -30,10 +30,12 @@
 using namespace std;
 
 FrameEvaluator::FrameEvaluator(Options& options,
+                               std::shared_ptr<CameraModel> calibration,
                                std::shared_ptr<StereoMatcher> stereo_matcher,
                                MapVisualizer* map_visualizer)
     : options_(options),
       stereo_matcher_(stereo_matcher),
+      calibration_(calibration),
       map_visualizer_(map_visualizer) {}
 
 void FrameEvaluator::EvaluateFrameReconstruction(Frame& frame,
@@ -48,7 +50,7 @@ void FrameEvaluator::EvaluateFrameReconstruction(Frame& frame,
       landmark_positions, frame.CameraTransformationWorld());
 
   auto landmarks_ground_truth =
-      ComputeGroundTruth(keypoints, im_left, im_right, frame.GetCalibration());
+      ComputeGroundTruth(keypoints, im_left, im_right, calibration_);
 
   auto [computed_error, scale_factor] = ComputeReconstructionRMSE(
       transformed_landmark_positions, landmarks_ground_truth, true);

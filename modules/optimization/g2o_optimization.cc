@@ -47,7 +47,8 @@
 using namespace std;
 
 void CameraPoseOptimization(
-    Frame& frame, const Sophus::SE3f& previous_camera_transform_world) {
+    Frame& frame, std::shared_ptr<CameraModel> calibration,
+    const Sophus::SE3f& previous_camera_transform_world) {
   // Create optimizer.
   g2o::SparseOptimizer optimizer;
   std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver =
@@ -99,7 +100,7 @@ void CameraPoseOptimization(
     edge->setRobustKernel(robust_kernel);
     robust_kernel->setDelta(th_huber_2dof);
 
-    edge->calibration_ = frame.GetCalibration();
+    edge->calibration_ = calibration;
     edge->landmark_world_ = landmark_positions[idx].cast<double>();
 
     optimizer.addEdge(edge);
@@ -151,6 +152,7 @@ void CameraPoseOptimization(
 
 absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     Frame& current_frame, std::shared_ptr<Map> map,
+    std::shared_ptr<CameraModel> calibration,
     const Sophus::SE3f& previous_camera_transform_world, const float scale) {
   vector<cv::KeyPoint> keypoints =
       current_frame.GetKeypointsWithStatus({TRACKED_WITH_3D});
@@ -266,7 +268,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     robust_kernel->setDelta(th_huber_2dof);
     reprojection_error->setRobustKernel(robust_kernel);
 
-    reprojection_error->calibration_ = current_frame.GetCalibration();
+    reprojection_error->calibration_ = calibration;
     reprojection_error->landmark_world_ =
         landmark_positions[idx].cast<double>();
 
@@ -996,6 +998,7 @@ class SpatialPoint {
 };
 
 void LocalDeformableBundleAdjustment(std::shared_ptr<Map> map,
+                                     std::shared_ptr<CameraModel> calibration,
                                      const float scale) {
   // Create optimizer.
   g2o::SparseOptimizer optimizer;
@@ -1151,7 +1154,7 @@ void LocalDeformableBundleAdjustment(std::shared_ptr<Map> map,
       robust_kernel->setDelta(th_huber_2dof);
       reprojection_error->setRobustKernel(robust_kernel);
 
-      reprojection_error->calibration_ = keyframe->GetCalibration();
+      reprojection_error->calibration_ = calibration;
 
       optimizer.addEdge(reprojection_error);
 

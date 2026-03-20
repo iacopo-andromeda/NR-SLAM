@@ -40,8 +40,6 @@ Frame::Frame(const Frame& other) {
 
   camera_transformation_world_ = other.camera_transformation_world_;
 
-  calibration_ = calibration_;
-
   id_ = other.id_;
 }
 
@@ -78,7 +76,6 @@ void Frame::SetFromKeyFrame(std::shared_ptr<KeyFrame> keyframe) {
 
   // Copy rest of fields.
   camera_transformation_world_ = keyframe->CameraTransformationWorld();
-  calibration_ = keyframe->GetCalibration();
 
   CHECK_EQ(landmark_positions_.size(), landmark_ground_truth_.size());
 }
@@ -182,12 +179,6 @@ const absl::flat_hash_map<int, ID>& Frame::IndexToMapPointId() const {
 const absl::flat_hash_map<ID, int>& Frame::MapPointIdToIndex() const {
   return mappoint_id_to_index_;
 }
-
-void Frame::SetCalibration(std::shared_ptr<CameraModel> calibration) {
-  calibration_ = calibration;
-}
-
-std::shared_ptr<CameraModel> Frame::GetCalibration() { return calibration_; }
 
 std::vector<ID> Frame::GetMapPointsIdsWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {

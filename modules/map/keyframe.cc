@@ -53,7 +53,6 @@ KeyFrame::KeyFrame(Frame& frame) {
       keypoints_.size(), absl::InternalError("No ground truth available."));
 
   camera_transformation_world_ = frame.CameraTransformationWorld();
-  calibration_ = frame.GetCalibration();
 
   id_ = nextId_++;
 }
@@ -103,8 +102,6 @@ const absl::flat_hash_map<int, ID>& KeyFrame::IndexToMapPointId() const {
 const absl::flat_hash_map<ID, int>& KeyFrame::MapPointIdToIndex() const {
   return mappoint_id_to_index_;
 }
-
-std::shared_ptr<CameraModel> KeyFrame::GetCalibration() { return calibration_; }
 
 std::vector<ID> KeyFrame::GetMapPointsIdsWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {

@@ -27,7 +27,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
-#include "calibration/camera_model.h"
 #include "map/keyframe.h"
 #include "map/mappoint.h"
 #include "sophus/se3.hpp"
@@ -81,10 +80,6 @@ class Frame {
 
   const absl::flat_hash_map<ID, int>& MapPointIdToIndex() const;
 
-  void SetCalibration(std::shared_ptr<CameraModel> calibration);
-
-  std::shared_ptr<CameraModel> GetCalibration();
-
   std::vector<ID> GetMapPointsIdsWithStatus(
       const absl::flat_hash_set<LandmarkStatus> statuses);
 
@@ -116,8 +111,6 @@ class Frame {
   absl::flat_hash_map<int, ID> index_to_mappoint_id_;
 
   Sophus::SE3f camera_transformation_world_;
-
-  std::shared_ptr<CameraModel> calibration_;
 
   int id_ = 0;
 

@@ -30,21 +30,23 @@ class DistortedPinHole : public CameraModel {
  public:
   DistortedPinHole();
 
-  DistortedPinHole(const std::vector<float> calibration_parameters);
+  DistortedPinHole(const std::vector<float>& calibration_parameters);
 
   void Project(const Eigen::Vector3f& landmark_position,
-               Eigen::Vector2f& pixel_position);
+               Eigen::Vector2f& pixel_position) const override;
 
   void Unproject(const Eigen::Vector2f& pixel_position,
-                 Eigen::Vector3f& projecting_ray);
+                 Eigen::Vector3f& projecting_ray) const override;
 
-  void ProjectionJacobian(const Eigen::Vector3f& landmark_position,
-                          Eigen::Matrix<float, 2, 3>& projection_jacobian);
+  void ProjectionJacobian(
+      const Eigen::Vector3f& landmark_position,
+      Eigen::Matrix<float, 2, 3>& projection_jacobian) const override;
 
-  void UnprojectionJacobian(const Eigen::Vector2f& pixel_position,
-                            Eigen::Matrix<float, 3, 2>& unprojection_jacobian);
+  void UnprojectionJacobian(
+      const Eigen::Vector2f& pixel_position,
+      Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const override;
 
-  Eigen::Matrix3f ToIntrinsicsMatrix();
+  Eigen::Matrix3f ToIntrinsicsMatrix() const override;
 
  private:
   cv::Mat intrinsics_matrix_;

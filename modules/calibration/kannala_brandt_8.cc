@@ -33,7 +33,7 @@ using namespace std;
 #define k3 calibration_parameters_[7]
 
 void KannalaBrandt8::Project(const Eigen::Vector3f& landmark_position,
-                             Eigen::Vector2f& pixel_position) {
+                             Eigen::Vector2f& pixel_position) const {
   const float x2_plus_y2 = landmark_position[0] * landmark_position[0] +
                            landmark_position[1] * landmark_position[1];
   const float theta = atan2f(sqrtf(x2_plus_y2), landmark_position[2]);
@@ -53,7 +53,7 @@ void KannalaBrandt8::Project(const Eigen::Vector3f& landmark_position,
 }
 
 void KannalaBrandt8::Unproject(const Eigen::Vector2f& pixel_position,
-                               Eigen::Vector3f& projecting_ray) {
+                               Eigen::Vector3f& projecting_ray) const {
   // Use Newthon method to solve for theta with good precision (err ~ e-6).
   cv::Point2f pw((pixel_position[0] - calibration_parameters_[2]) /
                      calibration_parameters_[0],
@@ -91,7 +91,7 @@ void KannalaBrandt8::Unproject(const Eigen::Vector2f& pixel_position,
 
 void KannalaBrandt8::ProjectionJacobian(
     const Eigen::Vector3f& landmark_position,
-    Eigen::Matrix<float, 2, 3>& projection_jacobian) {
+    Eigen::Matrix<float, 2, 3>& projection_jacobian) const {
   float x2 = landmark_position[0] * landmark_position[0];
   float y2 = landmark_position[1] * landmark_position[1];
   float z2 = landmark_position[2] * landmark_position[2];
@@ -128,11 +128,11 @@ void KannalaBrandt8::ProjectionJacobian(
 
 void KannalaBrandt8::UnprojectionJacobian(
     const Eigen::Vector2f& pixel_position,
-    Eigen::Matrix<float, 3, 2>& unprojection_jacobian) {
+    Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const {
   LOG(ERROR) << "UnprojectionJacobian not implmented yet.";
 }
 
-Eigen::Matrix3f KannalaBrandt8::ToIntrinsicsMatrix() {
+Eigen::Matrix3f KannalaBrandt8::ToIntrinsicsMatrix() const {
   Eigen::Matrix3f intrinsics_matrix = Eigen::Matrix3f::Identity();
   intrinsics_matrix(0, 0) = fx;
   intrinsics_matrix(0, 2) = cx;

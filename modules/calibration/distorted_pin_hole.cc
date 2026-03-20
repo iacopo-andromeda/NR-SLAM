@@ -28,7 +28,7 @@
 DistortedPinHole::DistortedPinHole() { calibration_parameters_.resize(9); }
 
 DistortedPinHole::DistortedPinHole(
-    const std::vector<float> calibration_parameters)
+    const std::vector<float>& calibration_parameters)
     : CameraModel(calibration_parameters) {
   assert(calibration_parameters_.size() == 9);
 
@@ -51,7 +51,7 @@ DistortedPinHole::DistortedPinHole(
 }
 
 void DistortedPinHole::Project(const Eigen::Vector3f& landmark_position,
-                               Eigen::Vector2f& pixel_position) {
+                               Eigen::Vector2f& pixel_position) const {
   const cv::Mat landmark_position_cv =
       (cv::Mat_<double>(1, 3) << landmark_position(0), landmark_position(1),
        landmark_position(2));
@@ -66,7 +66,7 @@ void DistortedPinHole::Project(const Eigen::Vector3f& landmark_position,
 }
 
 void DistortedPinHole::Unproject(const Eigen::Vector2f& pixel_position,
-                                 Eigen::Vector3f& projecting_ray) {
+                                 Eigen::Vector3f& projecting_ray) const {
   const cv::Mat pixel_position_cv =
       (cv::Mat_<double>(1, 2) << pixel_position(0), pixel_position(1));
 
@@ -81,7 +81,7 @@ void DistortedPinHole::Unproject(const Eigen::Vector2f& pixel_position,
 
 void DistortedPinHole::ProjectionJacobian(
     const Eigen::Vector3f& landmark_position,
-    Eigen::Matrix<float, 2, 3>& projection_jacobian) {
+    Eigen::Matrix<float, 2, 3>& projection_jacobian) const {
   const cv::Mat landmark_position_cv =
       (cv::Mat_<double>(1, 3) << landmark_position(0), landmark_position(1),
        landmark_position(2));
@@ -102,7 +102,7 @@ void DistortedPinHole::ProjectionJacobian(
 
 void DistortedPinHole::UnprojectionJacobian(
     const Eigen::Vector2f& pixel_position,
-    Eigen::Matrix<float, 3, 2>& unprojection_jacobian) {
+    Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const {
   const double delta = 1e-5;
   const double u = pixel_position(0);
   const double v = pixel_position(1);
@@ -129,7 +129,7 @@ void DistortedPinHole::UnprojectionJacobian(
   unprojection_jacobian(2, 1) = 0.0;
 }
 
-Eigen::Matrix3f DistortedPinHole::ToIntrinsicsMatrix() {
+Eigen::Matrix3f DistortedPinHole::ToIntrinsicsMatrix() const {
   Eigen::Matrix3f intrinsics_matrix = Eigen::Matrix3f::Zero();
   intrinsics_matrix(0, 0) = intrinsics_matrix_.at<double>(0, 0);
   intrinsics_matrix(0, 2) = intrinsics_matrix_.at<double>(0, 2);

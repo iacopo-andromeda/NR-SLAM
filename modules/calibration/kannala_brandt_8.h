@@ -29,23 +29,26 @@ class KannalaBrandt8 : public CameraModel {
  public:
   KannalaBrandt8() : precision_(1e-6) { calibration_parameters_.resize(8); }
 
-  KannalaBrandt8(const std::vector<float> calibration_parameters)
+  KannalaBrandt8(const std::vector<float>& calibration_parameters)
       : CameraModel(calibration_parameters), precision_(1e-6) {
     assert(calibration_parameters_.size() == 8);
   }
 
   void Project(const Eigen::Vector3f& landmark_position,
-               Eigen::Vector2f& pixel_position);
+               Eigen::Vector2f& pixel_position) const override;
 
-  void Unproject(const Eigen::Vector2f& p2D, Eigen::Vector3f& projecting_ray);
+  void Unproject(const Eigen::Vector2f& p2D,
+                 Eigen::Vector3f& projecting_ray) const override;
 
-  void ProjectionJacobian(const Eigen::Vector3f& landmark_position,
-                          Eigen::Matrix<float, 2, 3>& projection_jacobian);
+  void ProjectionJacobian(
+      const Eigen::Vector3f& landmark_position,
+      Eigen::Matrix<float, 2, 3>& projection_jacobian) const override;
 
-  void UnprojectionJacobian(const Eigen::Vector2f& pixel_position,
-                            Eigen::Matrix<float, 3, 2>& unprojection_jacobian);
+  void UnprojectionJacobian(
+      const Eigen::Vector2f& pixel_position,
+      Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const override;
 
-  Eigen::Matrix3f ToIntrinsicsMatrix();
+  Eigen::Matrix3f ToIntrinsicsMatrix() const override;
 
  private:
   const float precision_;
