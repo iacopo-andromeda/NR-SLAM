@@ -63,10 +63,6 @@ int main(int argc, char** argv) {
     auto image = dataset.GetImage(idx);
     CHECK_OK(image);
 
-    // Resize input image.
-    cv::Size newSize((*image).cols / 2.0f, (*image).rows / 2.0f);
-    cv::resize(*image, *image, newSize);
-
     SLAM.TrackImage(*image);
   }
 
