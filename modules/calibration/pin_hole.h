@@ -21,20 +21,30 @@
 #ifndef NRSLAM_PIN_HOLE_H
 #define NRSLAM_PIN_HOLE_H
 
-#include <assert.h>
-
 #include <opencv2/opencv.hpp>
 #include <vector>
 
 #include "camera_model.h"
+#include "camera_parameters.h"
 
 class PinHole : public CameraModel {
- public:
-  PinHole() { calibration_parameters_.resize(4); }
+ private:
+  PinholeParameters params_;
 
-  PinHole(const std::vector<float>& calibration_parameters)
-      : CameraModel(calibration_parameters) {
-    assert(calibration_parameters_.size() == 4);
+  // Deleted: force validation through constructor
+  PinHole() = delete;
+
+ public:
+  // Construct with typed parameters
+  explicit PinHole(const PinholeParameters& params) : params_(params) {
+    // Update base class for backward compatibility
+    calibration_parameters_ = params_.ToVector();
+  }
+
+  // Allow construction from vector (validates)
+  explicit PinHole(const std::vector<float>& calibration_parameters)
+      : params_(PinholeParameters::FromVector(calibration_parameters)) {
+    calibration_parameters_ = params_.ToVector();
   }
 
   void Project(const Eigen::Vector3f& landmark_position,
@@ -52,6 +62,9 @@ class PinHole : public CameraModel {
       Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const override;
 
   Eigen::Matrix3f ToIntrinsicsMatrix() const override;
+
+  // Access to parameters (for testing/debugging)
+  const PinholeParameters& GetParameters() const { return params_; }
 };
 
 #endif  // NRSLAM_PIN_HOLE_H

@@ -61,12 +61,16 @@ Endomapper::Endomapper(const std::string& video_path) {
   }
 }
 
-absl::StatusOr<cv::Mat> Endomapper::GetImage(const int idx) {
-  if (idx >= images_names_.size()) {
-    return absl::InternalError("Image index out boundaries.");
+int Endomapper::NumImages() const {
+  return static_cast<int>(images_names_.size());
+}
+
+absl::StatusOr<cv::Mat> Endomapper::GetImage(ImageIndex idx) {
+  if (idx.value < 0 || static_cast<size_t>(idx.value) >= images_names_.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
   }
 
-  return cv::imread(images_names_[idx], cv::IMREAD_UNCHANGED);
+  return cv::imread(images_names_[idx.value], cv::IMREAD_UNCHANGED);
 }
 
 bool Endomapper::SplitVideoIntoFrames(const std::string& dataset_path,

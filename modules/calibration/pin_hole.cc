@@ -20,46 +20,43 @@
 
 #include "pin_hole.h"
 
-#define fx calibration_parameters_[0]
-#define fy calibration_parameters_[1]
-#define cx calibration_parameters_[2]
-#define cy calibration_parameters_[3]
-
 void PinHole::Project(const Eigen::Vector3f& landmark_position,
                       Eigen::Vector2f& pixel_position) const {
-  pixel_position(0) = fx * landmark_position(0) / landmark_position(2) + cx;
-  pixel_position(1) = fy * landmark_position(1) / landmark_position(2) + cy;
+  pixel_position(0) =
+      params_.fx * landmark_position(0) / landmark_position(2) + params_.cx;
+  pixel_position(1) =
+      params_.fy * landmark_position(1) / landmark_position(2) + params_.cy;
 }
 
 void PinHole::Unproject(const Eigen::Vector2f& pixel_position,
                         Eigen::Vector3f& projecting_ray) const {
-  projecting_ray(0) = (pixel_position(0) - cx) / fx;
-  projecting_ray(1) = (pixel_position(1) - cy) / fy;
+  projecting_ray(0) = (pixel_position(0) - params_.cx) / params_.fx;
+  projecting_ray(1) = (pixel_position(1) - params_.cy) / params_.fy;
   projecting_ray(2) = 1.f;
 }
 
 void PinHole::ProjectionJacobian(
     const Eigen::Vector3f& landmark_position,
     Eigen::Matrix<float, 2, 3>& projection_jacobian) const {
-  projection_jacobian(0, 0) = fx / landmark_position(2);
+  projection_jacobian(0, 0) = params_.fx / landmark_position(2);
   projection_jacobian(0, 1) = 0.f;
-  projection_jacobian(0, 2) = -fx * landmark_position(0) /
+  projection_jacobian(0, 2) = -params_.fx * landmark_position(0) /
                               (landmark_position(2) * landmark_position(2));
 
   projection_jacobian(1, 0) = 0.f;
-  projection_jacobian(1, 1) = fy / landmark_position(2);
-  projection_jacobian(1, 2) = -fy * landmark_position(1) /
+  projection_jacobian(1, 1) = params_.fy / landmark_position(2);
+  projection_jacobian(1, 2) = -params_.fy * landmark_position(1) /
                               (landmark_position(2) * landmark_position(2));
 }
 
 void PinHole::UnprojectionJacobian(
     const Eigen::Vector2f& pixel_position,
     Eigen::Matrix<float, 3, 2>& unprojection_jacobian) const {
-  unprojection_jacobian(0, 0) = 1 / fx;
+  unprojection_jacobian(0, 0) = 1 / params_.fx;
   unprojection_jacobian(0, 1) = 0.f;
 
   unprojection_jacobian(1, 0) = 0.f;
-  unprojection_jacobian(1, 1) = 1 / fy;
+  unprojection_jacobian(1, 1) = 1 / params_.fy;
 
   unprojection_jacobian(2, 0) = 0.f;
   unprojection_jacobian(2, 1) = 0.f;
@@ -67,10 +64,10 @@ void PinHole::UnprojectionJacobian(
 
 Eigen::Matrix3f PinHole::ToIntrinsicsMatrix() const {
   Eigen::Matrix3f intrinsics_matrix = Eigen::Matrix3f::Identity();
-  intrinsics_matrix(0, 0) = fx;
-  intrinsics_matrix(0, 2) = cx;
-  intrinsics_matrix(1, 1) = fy;
-  intrinsics_matrix(1, 2) = cy;
+  intrinsics_matrix(0, 0) = params_.fx;
+  intrinsics_matrix(0, 2) = params_.cx;
+  intrinsics_matrix(1, 1) = params_.fy;
+  intrinsics_matrix(1, 2) = params_.cy;
 
   return intrinsics_matrix;
 }

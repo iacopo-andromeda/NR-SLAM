@@ -20,7 +20,10 @@
 
 #include "system.h"
 
+#include <chrono>
+
 #include "absl/log/log.h"
+#include "utilities/landmark_status.h"
 
 using namespace std;
 
@@ -44,6 +47,9 @@ System::System(const string settings_file_path) {
   // Create map
   Map::Options map_options;
   map_options.max_temporal_buffer_size = 20;
+  map_options.triangulation_track_lookback_frames =
+      settings_->GetTriangulationTrackLookbackFrames();
+  map_options.min_mappoint_distance = settings_->GetMinMapPointDistance();
   map_ = make_shared<Map>(map_options);
 
   // StereoLucasKanade::Options stereo_matcher_options;
@@ -68,25 +74,39 @@ System::System(const string settings_file_path) {
 
   map_visualizer_ = make_unique<MapVisualizer>(map_visualizer_options, map_);
 
-  // map_visualizer_thread_ =
-  //     make_unique<thread>(&MapVisualizer::Run, map_visualizer_.get());
+  map_visualizer_thread_ =
+      make_unique<thread>(&MapVisualizer::Run, map_visualizer_.get());
 
   // Initialize image visualizer.
   ImageVisualizer::Options image_visualizer_options;
   image_visualizer_options.wait_for_user_button = !settings_->GetAutoplay();
   image_visualizer_options.image_save_path =
       settings_->GetImageVisualizerPath();
-  // image_visualizer_ = make_shared<ImageVisualizer>(image_visualizer_options);
+  image_visualizer_ = make_shared<ImageVisualizer>(image_visualizer_options);
 
   // Initialize Tracking.
   Tracking::Options tracking_options;
-  tracking_options.klt_window_size = 21;
-  tracking_options.klt_max_level = 4;
-  tracking_options.klt_max_iters = 10;
-  tracking_options.klt_epsilon = 0.0001;
-  tracking_options.klt_min_eig_th = 0.0001;
-  tracking_options.klt_min_SSIM = 0.7;
-  tracking_options.radians_per_pixel = settings_->getRadPerPixel();
+  tracking_options.klt_window_size = settings_->GetKltWindowSize();
+  tracking_options.klt_max_level = settings_->GetKltMaxLevel();
+  tracking_options.klt_max_iters = settings_->GetKltMaxIters();
+  tracking_options.klt_epsilon = settings_->GetKltEpsilon();
+  tracking_options.klt_min_eig_th = settings_->GetKltMinEigTh();
+  tracking_options.klt_min_SSIM = settings_->GetKltMinSSIM();
+  tracking_options.images_to_insert_keyframe =
+      settings_->GetImagesToInsertKeyframe();
+  tracking_options.stale_mappoint_max_age_frames =
+      settings_->GetStaleMapPointMaxAgeFrames();
+  tracking_options.min_tracked_points_abort =
+      settings_->GetMinTrackedPointsAbort();
+  tracking_options.lost_recovery_grace_frames =
+      settings_->GetLostRecoveryGraceFrames();
+  tracking_options.lost_recovery_min_tracked_points =
+      settings_->GetLostRecoveryMinTrackedPoints();
+  tracking_options.feature_max_corners = settings_->GetFeatureMaxCorners();
+  tracking_options.feature_quality_level = settings_->GetFeatureQualityLevel();
+  tracking_options.feature_min_distance = settings_->GetFeatureMinDistance();
+  tracking_options.lost_bootstrap_frame_stride =
+      settings_->GetLostBootstrapFrameStride();
 
   // Time profiler.
   time_profiler_ = make_unique<TimeProfiler>();
@@ -97,7 +117,6 @@ System::System(const string settings_file_path) {
 
   // Initialize Mapping.
   Mapping::Options mapping_options;
-  mapping_options.rad_per_pixel = settings_->getRadPerPixel();
   mapper_ = make_unique<Mapping>(map_, settings_->getCalibration(),
                                  mapping_options, time_profiler_.get());
 
@@ -108,17 +127,32 @@ System::System(const string settings_file_path) {
   frame_evaluator_ = make_unique<FrameEvaluator>(
       frame_evaluator_options, settings_->getCalibration(),
       stereo_pattern_matcher_, map_visualizer_.get());
+
+  // Initialize performance logger.
+  perf_log_csv_path_ = "slam_performance.csv";
+  perf_logger_ = make_unique<PerformanceLogger>();
+  LOG(INFO) << "PerformanceLogger ready. CSV will be saved to: "
+            << perf_log_csv_path_;
 }
 
 System::~System() {
+  // Print and save performance summary before shutting down.
+  if (perf_logger_) {
+    perf_logger_->PrintSummary();
+    perf_logger_->SaveToCSV(perf_log_csv_path_);
+  }
+
   // Send signal to the visualizer to finish
   map_visualizer_->SetFinish();
 
   // Wait until is done
-  // map_visualizer_thread_->join();
+  map_visualizer_thread_->join();
 }
 
 void System::TrackImage(const cv::Mat& im) {
+  const auto t_frame_start = std::chrono::steady_clock::now();
+  const uint64_t frame_id = frame_counter_++;
+
   // Preprocess image.
   cv::Mat im_gray;
   cv::Mat processed_image = ImageProcessing(im, im_gray);
@@ -128,78 +162,126 @@ void System::TrackImage(const cv::Mat& im) {
     image_visualizer_->SetCurrentImage(im, processed_image);
 
   // Generate image mask.
-  auto masks = masker_->GetAllMasks(im_gray);
+  auto masks = masker_->GetAllMasks(processed_image);
 
-  // Perform tracking.
-  tracker_->TrackImage(im_gray, masks, cv::Mat(), processed_image);
+  // --- Tracking ---
+  const auto t_tracking_start = std::chrono::steady_clock::now();
+  tracker_->TrackImage(processed_image, masks);
+  const auto t_tracking_end = std::chrono::steady_clock::now();
 
-  // Perform mapping.
+  // --- Mapping ---
+  const auto t_mapping_start = std::chrono::steady_clock::now();
   mapper_->DoMapping();
+  const auto t_mapping_end = std::chrono::steady_clock::now();
 
   // Draw images.
   if (image_visualizer_) image_visualizer_->UpdateWindows();
-}
 
-void System::TrackImageWithStereo(const cv::Mat& im_left,
-                                  const cv::Mat& im_right) {
-  // Preprocess images.
-  cv::Mat im_gray_left, im_gray_right;
-  cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
-  cv::Mat processed_image_right = ImageProcessing(im_right, im_gray_right);
+  const auto t_frame_end = std::chrono::steady_clock::now();
 
-  // Insert image in the image visualizer.
-  image_visualizer_->SetCurrentImage(im_left, processed_image_left);
+  // --- Collect per-frame performance stats ---
+  auto to_ms = [](auto a, auto b) -> double {
+    return std::chrono::duration<double, std::milli>(b - a).count();
+  };
 
-  // Generate image mask.
-  auto masks = masker_->GetAllMasks(im_gray_left);
+  PerformanceLogger::FrameStats stats;
+  stats.frame_id = frame_id;
 
-  // Perform tracking.
-  tracker_->TrackImage(im_gray_left, masks, im_gray_right,
-                       processed_image_left);
-
-  // Perform mapping.
-  mapper_->DoMapping();
-
-  // Evaluate reconstruction.
-  if (false && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
-    frame_evaluator_->EvaluateFrameReconstruction(
-        *(map_->GetMutableLastFrame()), im_gray_left, im_gray_right);
-    frame_evaluator_->SaveResultsToFile();
+  // Tracking status string.
+  switch (tracker_->GetTrackingStatus()) {
+    case Tracking::TRACKING:
+      stats.tracking_status = "TRACKING";
+      break;
+    case Tracking::LOST:
+      stats.tracking_status = "LOST";
+      break;
+    case Tracking::NOT_INITIALIZED:
+      stats.tracking_status = "NOT_INITIALIZED";
+      break;
   }
 
-  // Draw images.
-  image_visualizer_->UpdateWindows();
-}
-
-void System::TrackImageWithDepth(const cv::Mat& im_left,
-                                 const cv::Mat& im_depth) {
-  // Preprocess images.
-  cv::Mat im_gray_left, im_gray_right;
-  cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
-
-  // Insert image in the image visualizer.
-  image_visualizer_->SetCurrentImage(im_left, processed_image_left);
-
-  // Generate image mask.
-  auto masks = masker_->GetAllMasks(im_gray_left);
-
-  // Perform tracking.
-  tracker_->TrackImage(im_gray_left, masks, im_gray_right,
-                       processed_image_left);
-
-  // Perform mapping.
-  mapper_->DoMapping();
-
-  // Evaluate reconstruction.
-  if (true && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
-    frame_evaluator_->EvaluateFrameReconstruction(
-        *(map_->GetMutableLastFrame()), im_gray_left, im_depth);
-    frame_evaluator_->SaveResultsToFile();
+  // Feature counts from the last frame committed to the map.
+  if (auto last_frame = map_->GetMutableLastFrame()) {
+    stats.n_keypoints = static_cast<int>(last_frame->Keypoints().size());
+    stats.n_tracked_3d = static_cast<int>(
+        last_frame->GetKeypointsWithStatus({TRACKED_WITH_3D}).size());
   }
+  stats.n_map_points = static_cast<int>(map_->GetMapPoints().size());
 
-  // Draw images.
-  image_visualizer_->UpdateWindows();
+  stats.ms_tracking = to_ms(t_tracking_start, t_tracking_end);
+  stats.ms_mapping = to_ms(t_mapping_start, t_mapping_end);
+  stats.ms_total = to_ms(t_frame_start, t_frame_end);
+
+  LOG(INFO) << "[PERF] frame=" << frame_id
+            << " status=" << stats.tracking_status
+            << " kps=" << stats.n_keypoints << " kps_3d=" << stats.n_tracked_3d
+            << " map_pts=" << stats.n_map_points
+            << " ms_track=" << stats.ms_tracking
+            << " ms_map=" << stats.ms_mapping << " ms_total=" << stats.ms_total;
+
+  perf_logger_->LogFrame(stats);
 }
+
+// void System::TrackImageWithStereo(const cv::Mat& im_left,
+//                                   const cv::Mat& im_right) {
+//   // Preprocess images.
+//   cv::Mat im_gray_left, im_gray_right;
+//   cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
+//   cv::Mat processed_image_right = ImageProcessing(im_right, im_gray_right);
+
+//   // Insert image in the image visualizer.
+//   image_visualizer_->SetCurrentImage(im_left, processed_image_left);
+
+//   // Generate image mask.
+//   auto masks = masker_->GetAllMasks(im_gray_left);
+
+//   // Perform tracking.
+//   tracker_->TrackImage(im_gray_left, masks, im_gray_right,
+//                        processed_image_left);
+
+//   // Perform mapping.
+//   mapper_->DoMapping();
+
+//   // Evaluate reconstruction.
+//   if (false && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
+//     frame_evaluator_->EvaluateFrameReconstruction(
+//         *(map_->GetMutableLastFrame()), im_gray_left, im_gray_right);
+//     frame_evaluator_->SaveResultsToFile();
+//   }
+
+//   // Draw images.
+//   image_visualizer_->UpdateWindows();
+// }
+
+// void System::TrackImageWithDepth(const cv::Mat& im_left,
+//                                  const cv::Mat& im_depth) {
+//   // Preprocess images.
+//   cv::Mat im_gray_left, im_gray_right;
+//   cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
+
+//   // Insert image in the image visualizer.
+//   image_visualizer_->SetCurrentImage(im_left, processed_image_left);
+
+//   // Generate image mask.
+//   auto masks = masker_->GetAllMasks(im_gray_left);
+
+//   // Perform tracking.
+//   tracker_->TrackImage(im_gray_left, masks, im_gray_right,
+//                        processed_image_left);
+
+//   // Perform mapping.
+//   mapper_->DoMapping();
+
+//   // Evaluate reconstruction.
+//   if (true && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
+//     frame_evaluator_->EvaluateFrameReconstruction(
+//         *(map_->GetMutableLastFrame()), im_gray_left, im_depth);
+//     frame_evaluator_->SaveResultsToFile();
+//   }
+
+//   // Draw images.
+//   image_visualizer_->UpdateWindows();
+// }
 
 cv::Mat System::ImageProcessing(const cv::Mat& im, cv::Mat& im_gray) {
   cv::Mat processed_image;

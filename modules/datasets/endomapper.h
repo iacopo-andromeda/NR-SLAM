@@ -25,6 +25,7 @@
 #include <string>
 
 #include "absl/status/statusor.h"
+#include "datasets/dataset_index.h"
 
 class Endomapper {
  public:
@@ -32,8 +33,11 @@ class Endomapper {
   // split, it splits it. Otherwise just loads the images.
   Endomapper(const std::string& video_path);
 
+  // Returns the total number of images in the dataset.
+  int NumImages() const;
+
   // Retrieves the ith image in the sequence.
-  absl::StatusOr<cv::Mat> GetImage(const int idx);
+  absl::StatusOr<cv::Mat> GetImage(ImageIndex idx);
 
  private:
   // Splits a given video found at videoPath and splits it into single images

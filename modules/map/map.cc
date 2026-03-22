@@ -33,6 +33,8 @@ Map::Map(Map::Options& options) : options_(options) {
 
   TemporalBuffer::Options temporal_buffer_options;
   temporal_buffer_options.max_buffer_size = options.max_temporal_buffer_size;
+  temporal_buffer_options.max_track_lookback_frames =
+      options.triangulation_track_lookback_frames;
   temporal_buffer_ = make_shared<TemporalBuffer>(temporal_buffer_options);
 }
 
@@ -50,15 +52,47 @@ void Map::InsertMapPoint(std::shared_ptr<MapPoint> mappoint) {
   mappoints_[mappoint->GetId()] = mappoint;
 }
 
+std::shared_ptr<MapPoint> Map::FindNearbyMapPoint(
+    const Eigen::Vector3f& position) const {
+  if (options_.min_mappoint_distance <= 0.0f || mappoints_.empty()) {
+    return nullptr;
+  }
+
+  const float min_distance_sq =
+      options_.min_mappoint_distance * options_.min_mappoint_distance;
+
+  std::shared_ptr<MapPoint> nearest_mappoint = nullptr;
+  float nearest_distance_sq = min_distance_sq;
+
+  for (const auto& [mappoint_id, mappoint] : mappoints_) {
+    (void)mappoint_id;
+    const float distance_sq =
+        (mappoint->GetLastWorldPosition() - position).squaredNorm();
+    if (distance_sq <= nearest_distance_sq) {
+      nearest_distance_sq = distance_sq;
+      nearest_mappoint = mappoint;
+    }
+  }
+
+  return nearest_mappoint;
+}
+
 std::shared_ptr<MapPoint> Map::CreateAndInsertMapPoint(
     const Eigen::Vector3f& position, const int keypoint_id) {
+  if (auto nearby = FindNearbyMapPoint(position)) {
+    return nearby;
+  }
+
   auto mappoint = make_shared<MapPoint>(position, keypoint_id);
   InsertMapPoint(mappoint);
 
   return mappoint;
 }
 
-void Map::RemoveMapPoint(ID id) { mappoints_.erase(id); }
+void Map::RemoveMapPoint(ID id) {
+  regularization_graph_->RemoveVertex(id);
+  mappoints_.erase(id);
+}
 
 std::shared_ptr<KeyFrame> Map::GetNextUnmappedKeyFrame() {
   if (unmapped_keyframes_.empty()) {
@@ -173,7 +207,7 @@ std::shared_ptr<TemporalBuffer> Map::GetTemporalBuffer() {
 }
 
 void Map::SetAllMappointsToNonActive() {
-  for (auto mappoint : mappoints_) {
+  for (const auto& mappoint : mappoints_) {
     mappoint.second->IsActive() = false;
   }
 }

@@ -430,7 +430,7 @@ absl::Status EssentialMatrixInitialization::ReconstructPoints(
       Eigen::Vector3f normal_2 = landmark_position - world_t_camera;
       float parallax = RaysParallax(normal_1, normal_2);
 
-      if (parallax < options_.radians_per_pixel * 5.f) {
+      if (parallax < calibration_->GetRadiansPerPixel() * 5.f) {
         landmarks_position[idx] = absl::InternalError("Low parallax error.");
         n_parallax++;
         continue;

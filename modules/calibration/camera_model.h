@@ -23,8 +23,11 @@
 
 #include <unistd.h>
 
+#include <cmath>
 #include <eigen3/Eigen/Core>
 #include <opencv2/opencv.hpp>
+#include <stdexcept>
+#include <string>
 
 class CameraModel {
  public:
@@ -56,14 +59,37 @@ class CameraModel {
   // holding the camera parameters.
   virtual Eigen::Matrix3f ToIntrinsicsMatrix() const = 0;
 
+  // Returns the angular resolution in radians per pixel, computed from the
+  // focal length. This is derived from the camera's intrinsic matrix.
+  float GetRadiansPerPixel() const {
+    Eigen::Matrix3f K = ToIntrinsicsMatrix();
+    float fx = K(0, 0);  // focal length in x direction
+    // Angular size of one pixel (radians): arctan(1/f) ≈ 1/f for small angles
+    return std::atan(1.0f / fx);
+  }
+
   // Returns the calibration parameters.
   std::vector<float> GetParameters() const { return calibration_parameters_; }
 
-  // Gets the i-th calibration parameter of the camera model.
-  float GetParameter(const int i) const { return calibration_parameters_[i]; }
+  // Gets the i-th calibration parameter of the camera model (with bounds
+  // checking).
+  float GetParameter(const int i) const {
+    if (i < 0 || i >= static_cast<int>(calibration_parameters_.size())) {
+      throw std::out_of_range(
+          "Parameter index " + std::to_string(i) + " out of range [0, " +
+          std::to_string(calibration_parameters_.size()) + ")");
+    }
+    return calibration_parameters_[i];
+  }
 
-  // Sets the i-th calibration parameter of the camera model.
+  // Sets the i-th calibration parameter of the camera model (with bounds
+  // checking).
   void SetParameter(const float p, const int i) {
+    if (i < 0 || i >= static_cast<int>(calibration_parameters_.size())) {
+      throw std::out_of_range(
+          "Parameter index " + std::to_string(i) + " out of range [0, " +
+          std::to_string(calibration_parameters_.size()) + ")");
+    }
     calibration_parameters_[i] = p;
   }
 

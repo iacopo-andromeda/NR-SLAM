@@ -60,6 +60,8 @@ class RegularizationGraph {
   void AddEdge(ID mappoint_id, ID mappoint_id_other,
                Eigen::Vector3f& relative_position);
 
+  void RemoveVertex(ID mappoint_id);
+
   std::shared_ptr<Edge> GetEdge(ID mappoint_id, ID mappoint_id_other);
 
   std::vector<std::pair<ID, std::shared_ptr<Edge>>> GetEdges(

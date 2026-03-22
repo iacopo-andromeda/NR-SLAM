@@ -20,35 +20,35 @@
 
 #include "distorted_pin_hole.h"
 
-#include <assert.h>
-
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
 
-DistortedPinHole::DistortedPinHole() { calibration_parameters_.resize(9); }
-
-DistortedPinHole::DistortedPinHole(
-    const std::vector<float>& calibration_parameters)
-    : CameraModel(calibration_parameters) {
-  assert(calibration_parameters_.size() == 9);
+DistortedPinHole::DistortedPinHole(const DistortedPinholeParameters& params)
+    : params_(params) {
+  calibration_parameters_ = params_.ToVector();
 
   rvec_ = cv::Mat::eye(3, 3, CV_64F);
   tvec_ = cv::Mat::zeros(3, 1, CV_64F);
 
   intrinsics_matrix_ = cv::Mat::zeros(3, 3, CV_64F);
-  intrinsics_matrix_.at<double>(0, 0) = calibration_parameters_[0];
-  intrinsics_matrix_.at<double>(1, 1) = calibration_parameters_[1];
-  intrinsics_matrix_.at<double>(0, 2) = calibration_parameters_[2];
-  intrinsics_matrix_.at<double>(1, 2) = calibration_parameters_[3];
+  intrinsics_matrix_.at<double>(0, 0) = params_.fx;
+  intrinsics_matrix_.at<double>(1, 1) = params_.fy;
+  intrinsics_matrix_.at<double>(0, 2) = params_.cx;
+  intrinsics_matrix_.at<double>(1, 2) = params_.cy;
   intrinsics_matrix_.at<double>(2, 2) = 1.;
 
   dist_coeffs_ = cv::Mat::zeros(5, 1, CV_64F);
-  dist_coeffs_.at<double>(0, 0) = calibration_parameters_[4];
-  dist_coeffs_.at<double>(1, 0) = calibration_parameters_[5];
-  dist_coeffs_.at<double>(2, 0) = calibration_parameters_[6];
-  dist_coeffs_.at<double>(3, 0) = calibration_parameters_[7];
-  dist_coeffs_.at<double>(4, 0) = calibration_parameters_[8];
+  dist_coeffs_.at<double>(0, 0) = params_.k1;
+  dist_coeffs_.at<double>(1, 0) = params_.k2;
+  dist_coeffs_.at<double>(2, 0) = params_.p1;
+  dist_coeffs_.at<double>(3, 0) = params_.p2;
+  dist_coeffs_.at<double>(4, 0) = 0.0;
 }
+
+DistortedPinHole::DistortedPinHole(
+    const std::vector<float>& calibration_parameters)
+    : DistortedPinHole(
+          DistortedPinholeParameters::FromVector(calibration_parameters)) {}
 
 void DistortedPinHole::Project(const Eigen::Vector3f& landmark_position,
                                Eigen::Vector2f& pixel_position) const {

@@ -176,6 +176,7 @@ set(UTILITIES_SOURCES
         ${root}/utilities/frame_evaluator.cc
         ${root}/utilities/geometry_toolbox.cc
         ${root}/utilities/landmark_status.cc
+        ${root}/utilities/performance_logger.cc
         ${root}/utilities/statistics_toolbox.cc
         ${root}/utilities/time_profiler.cc
         ${root}/utilities/types_conversions.cc
@@ -183,6 +184,7 @@ set(UTILITIES_SOURCES
         ${root}/utilities/frame_evaluator.h
         ${root}/utilities/geometry_toolbox.h
         ${root}/utilities/landmark_status.h
+        ${root}/utilities/performance_logger.h
         ${root}/utilities/statistics_toolbox.h
         ${root}/utilities/time_profiler.h
         ${root}/utilities/types_conversions.h

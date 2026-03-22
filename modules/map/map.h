@@ -35,6 +35,8 @@ class Map {
  public:
   struct Options {
     int max_temporal_buffer_size = 20;
+    int triangulation_track_lookback_frames = 5;
+    float min_mappoint_distance = 0.0f;
   };
 
   Map() = delete;
@@ -105,6 +107,9 @@ class Map {
   std::shared_ptr<RegularizationGraph> regularization_graph_;
 
   Options options_;
+
+  std::shared_ptr<MapPoint> FindNearbyMapPoint(
+      const Eigen::Vector3f& position) const;
 
   absl::Mutex last_frame_mutex_;
   absl::Mutex keyframes_mutex_;

@@ -112,20 +112,25 @@ Simulation::Simulation(const std::string& dataset_path) {
   poses_file_reader.close();
 }
 
-absl::StatusOr<cv::Mat> Simulation::GetImage(const int idx) {
-  if (idx >= images_names_.size()) {
-    return absl::InternalError("Image index out boundaries.");
-  }
-
-  return cv::imread(images_names_[idx], cv::IMREAD_COLOR);
+int Simulation::NumImages() const {
+  return static_cast<int>(images_names_.size());
 }
 
-absl::StatusOr<cv::Mat> Simulation::GetDepthImage(const int idx) {
-  if (idx >= depth_images_names_.size()) {
-    return absl::InternalError("Image index out boundaries.");
+absl::StatusOr<cv::Mat> Simulation::GetImage(ImageIndex idx) {
+  if (idx.value < 0 || static_cast<size_t>(idx.value) >= images_names_.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
   }
 
-  cv::Mat depth_image = cv::imread(depth_images_names_[idx],
+  return cv::imread(images_names_[idx.value], cv::IMREAD_COLOR);
+}
+
+absl::StatusOr<cv::Mat> Simulation::GetDepthImage(ImageIndex idx) {
+  if (idx.value < 0 ||
+      static_cast<size_t>(idx.value) >= depth_images_names_.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
+  }
+
+  cv::Mat depth_image = cv::imread(depth_images_names_[idx.value],
                                    cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
 
   cv::Mat channels[3];
@@ -143,12 +148,13 @@ absl::StatusOr<cv::Mat> Simulation::GetDepthImage(const int idx) {
   return depth_image;
 }
 
-absl::StatusOr<Sophus::SE3f> Simulation::GetCameraPose(const int idx) {
-  if (idx >= ground_truth_poses_.size()) {
-    return absl::InternalError("Pose index out boundaries.");
+absl::StatusOr<Sophus::SE3f> Simulation::GetCameraPose(ImageIndex idx) {
+  if (idx.value < 0 ||
+      static_cast<size_t>(idx.value) >= ground_truth_poses_.size()) {
+    return absl::OutOfRangeError("Pose index out of range.");
   }
 
-  return ground_truth_poses_[idx];
+  return ground_truth_poses_[idx.value];
 }
 
 void Simulation::GenerateNamesFile(const std::string& images_path) {

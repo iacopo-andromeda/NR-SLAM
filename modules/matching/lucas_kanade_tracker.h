@@ -73,6 +73,12 @@ class LucasKanadeTracker {
 
   void clear();
 
+ private:
+  bool IsInsidePyramidWindow(const cv::Point2i& p, const cv::Size& image_size,
+                             int border_gap) const;
+  bool IsInsideTrackingPoint(const cv::Point2f& p, const cv::Size& image_size,
+                             int border_gap) const;
+
  public:
   //-------------------------------
   //        KLT parameters

@@ -49,10 +49,14 @@ Andromeda::Andromeda(const std::string& image_directory) {
   }
 }
 
-absl::StatusOr<cv::Mat> Andromeda::GetImage(const int idx) {
-  if (idx >= images_names_.size()) {
-    return absl::InternalError("Image index out boundaries.");
+int Andromeda::NumImages() const {
+  return static_cast<int>(images_names_.size());
+}
+
+absl::StatusOr<cv::Mat> Andromeda::GetImage(ImageIndex idx) {
+  if (idx.value < 0 || static_cast<size_t>(idx.value) >= images_names_.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
   }
 
-  return cv::imread(images_names_[idx], cv::IMREAD_UNCHANGED);
+  return cv::imread(images_names_[idx.value], cv::IMREAD_UNCHANGED);
 }

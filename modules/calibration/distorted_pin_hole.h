@@ -25,12 +25,25 @@
 #include <vector>
 
 #include "camera_model.h"
+#include "camera_parameters.h"
 
 class DistortedPinHole : public CameraModel {
- public:
-  DistortedPinHole();
+ private:
+  DistortedPinholeParameters params_;
+  cv::Mat intrinsics_matrix_;
+  cv::Mat dist_coeffs_;
+  cv::Mat rvec_;
+  cv::Mat tvec_;
 
-  DistortedPinHole(const std::vector<float>& calibration_parameters);
+  // Deleted: force validation through constructor
+  DistortedPinHole() = delete;
+
+ public:
+  // Construct with typed parameters
+  explicit DistortedPinHole(const DistortedPinholeParameters& params);
+
+  // Allow construction from vector (validates)
+  explicit DistortedPinHole(const std::vector<float>& calibration_parameters);
 
   void Project(const Eigen::Vector3f& landmark_position,
                Eigen::Vector2f& pixel_position) const override;
@@ -48,11 +61,8 @@ class DistortedPinHole : public CameraModel {
 
   Eigen::Matrix3f ToIntrinsicsMatrix() const override;
 
- private:
-  cv::Mat intrinsics_matrix_;
-  cv::Mat dist_coeffs_;
-  cv::Mat rvec_;
-  cv::Mat tvec_;
+  // Access to parameters (for testing/debugging)
+  const DistortedPinholeParameters& GetParameters() const { return params_; }
 };
 
 #endif  // NRSLAM_DISTORTED_PIN_HOLE_H

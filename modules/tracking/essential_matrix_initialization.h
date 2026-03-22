@@ -35,7 +35,6 @@ class EssentialMatrixInitialization {
     int max_features;
     int min_sample_set_size;
     float min_parallax;
-    float radians_per_pixel;
     float epipolar_threshold;
   };
 

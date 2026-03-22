@@ -25,6 +25,7 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "map/frame.h"
 #include "sophus/se3.hpp"
 
@@ -34,6 +35,14 @@ class TemporalBuffer {
  public:
   struct Options {
     int max_buffer_size = 40;
+    int max_track_lookback_frames = 5;
+  };
+
+  struct TrackRecord {
+    cv::KeyPoint keypoint;
+    LandmarkStatus status;
+    Eigen::Vector3f landmark_position;
+    int frame_index = -1;
   };
 
   TemporalBuffer() = delete;
@@ -41,23 +50,16 @@ class TemporalBuffer {
   TemporalBuffer(Options& options);
 
   struct Snapshot {
-    // Feature tracks.
-    absl::flat_hash_map<int, cv::KeyPoint> keypoint_tracks;
-
-    // Feature tracks status.
-    absl::flat_hash_map<int, LandmarkStatus> keypoint_tracks_status;
+    // Per-keypoint track data. Keeping all related fields in a single record
+    // prevents the snapshot from drifting out of sync across multiple maps.
+    absl::flat_hash_map<int, TrackRecord> tracks;
 
     // Camera pose.
     Sophus::SE3f camera_transform_world;
 
-    // MapPoint 3D tracks.
-    absl::flat_hash_map<ID, Eigen::Vector3f> mapppoint_tracks_;
-
     // TODO: we should add index inside the frame to make things easier when
     // inserting in the frame after triangulation
     int frame_id;
-
-    absl::flat_hash_map<int, int> keypoint_id_to_frame_idx;
 
     float deformation_magnitud;
   };
@@ -84,6 +86,8 @@ class TemporalBuffer {
   std::vector<std::pair<ID, cv::KeyPoint>> GetFeatureTrack(
       const int keypoint_id);
 
+  int PruneStaleTracks(const int max_stale_frames);
+
   absl::StatusOr<Sophus::SE3f> GetCameraTransformWorld(const int frame_id);
 
   absl::StatusOr<Eigen::Vector3f> GetLandmarkPosition(const int frame_id,
@@ -95,7 +99,17 @@ class TemporalBuffer {
   bool CheckRigidity(const int first_frame_id, const int last_frame_id,
                      const float rigidity_th);
 
+  // Checks that all buffer entries are internally consistent.
+  // Returns an error if any invariant is violated.
+  absl::Status Validate() const;
+
  private:
+  // Returns a const reference to the Snapshot for frame_id, or NotFoundError.
+  absl::StatusOr<std::reference_wrapper<const Snapshot>> GetSnapshot(
+      int frame_id) const;
+
+  int PruneTrackHistoryByAge(const int max_track_lookback_frames);
+
   absl::btree_map<ID, Snapshot> buffer_;
 
   Options options_;

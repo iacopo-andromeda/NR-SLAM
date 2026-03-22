@@ -42,7 +42,6 @@ class MonocularMapInitializer {
     int rigid_initializer_max_features;
     int rigid_initializer_min_sample_set_size;
     float rigid_initializer_min_parallax;
-    float rigid_initializer_radians_per_pixel;
     float rigid_initializer_epipolar_threshold;
   };
 
@@ -64,12 +63,10 @@ class MonocularMapInitializer {
                           std::shared_ptr<ImageVisualizer> image_visualizer);
 
   absl::StatusOr<InitializationResults> ProcessNewImage(const cv::Mat& im,
-                                                        const cv::Mat& im_clahe,
                                                         const cv::Mat& mask);
 
  private:
-  void DataAssociation(const cv::Mat& im, const cv::Mat& im_clahe,
-                       const cv::Mat& mask);
+  void DataAssociation(const cv::Mat& im, const cv::Mat& mask);
 
   void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
                        std::vector<cv::KeyPoint>& keypoints);
@@ -81,8 +78,7 @@ class MonocularMapInitializer {
 
   std::vector<int> FeatureTracksClustering();
 
-  void ResetInitialization(const cv::Mat& im, const cv::Mat& im_clahe,
-                           const cv::Mat& mask);
+  void ResetInitialization(const cv::Mat& im, const cv::Mat& mask);
 
   typedef absl::StatusOr<
       std::tuple<Sophus::SE3f, std::vector<absl::StatusOr<Eigen::Vector3f>>>>
@@ -133,7 +129,7 @@ class MonocularMapInitializer {
 
   std::unique_ptr<EssentialMatrixInitialization> rigid_initializer_;
 
-  int n_tracks_in_image_;
+  int n_tracks_in_image_ = 0;
 
   std::shared_ptr<CameraModel> calibration_;
 };

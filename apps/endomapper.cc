@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
   for (int idx = starting_frame; idx < end_frame; idx++) {
     LOG(INFO) << "Processing image " << idx;
-    auto image = dataset.GetImage(idx);
+    auto image = dataset.GetImage(ImageIndex{idx});
     CHECK_OK(image);
 
     // Resize input image.

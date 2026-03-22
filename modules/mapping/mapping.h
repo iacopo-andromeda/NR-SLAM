@@ -27,9 +27,7 @@
 
 class Mapping {
  public:
-  struct Options {
-    float rad_per_pixel;
-  };
+  struct Options {};
 
   Mapping() = delete;
 

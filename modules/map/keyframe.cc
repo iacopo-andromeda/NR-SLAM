@@ -47,10 +47,12 @@ KeyFrame::KeyFrame(Frame& frame) {
   keypoints_.insert(keypoints_.end(), keypoints_without_3d.begin(),
                     keypoints_without_3d.end());
 
-  landmark_positions_.resize(keypoints_.size(), Eigen::Vector3f::Zero());
-  landmark_status_.resize(keypoints_.size(), TRACKED);
-  landmark_ground_truth_.resize(
-      keypoints_.size(), absl::InternalError("No ground truth available."));
+  for (int idx = 0; idx < keypoints_without_3d.size(); idx++) {
+    landmark_positions_.push_back(Eigen::Vector3f::Zero());
+    landmark_status_.push_back(TRACKED);
+    landmark_ground_truth_.push_back(
+        absl::InternalError("No ground truth available."));
+  }
 
   camera_transformation_world_ = frame.CameraTransformationWorld();
 
@@ -62,6 +64,7 @@ std::vector<cv::KeyPoint>& KeyFrame::Keypoints() { return keypoints_; }
 std::vector<cv::KeyPoint> KeyFrame::GetKeypointsWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {
   vector<cv::KeyPoint> keypoints;
+  keypoints.reserve(keypoints_.size());
   for (int idx = 0; idx < landmark_status_.size(); idx++) {
     if (statuses.contains(landmark_status_[idx])) {
       keypoints.push_back(keypoints_[idx]);
@@ -78,6 +81,7 @@ std::vector<Eigen::Vector3f>& KeyFrame::LandmarkPositions() {
 std::vector<Eigen::Vector3f> KeyFrame::GetLandmarkPositionsWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {
   vector<Eigen::Vector3f> landmark_positions;
+  landmark_positions.reserve(landmark_positions_.size());
   for (int idx = 0; idx < landmark_status_.size(); idx++) {
     if (statuses.contains(landmark_status_[idx])) {
       landmark_positions.push_back(landmark_positions_[idx]);
@@ -106,6 +110,7 @@ const absl::flat_hash_map<ID, int>& KeyFrame::MapPointIdToIndex() const {
 std::vector<ID> KeyFrame::GetMapPointsIdsWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {
   vector<ID> mappoints_ids;
+  mappoints_ids.reserve(index_to_mappoint_id_.size());
 
   for (int idx = 0; idx < landmark_status_.size(); idx++) {
     if (statuses.contains(landmark_status_[idx]) &&
@@ -126,6 +131,7 @@ std::vector<absl::StatusOr<Eigen::Vector3f>> KeyFrame::GroundTruth() {
 std::vector<absl::StatusOr<Eigen::Vector3f>> KeyFrame::GetGroundTruthWithStatus(
     const absl::flat_hash_set<LandmarkStatus> statuses) {
   vector<absl::StatusOr<Eigen::Vector3f>> ground_truth;
+  ground_truth.reserve(landmark_ground_truth_.size());
 
   for (int idx = 0; idx < landmark_status_.size(); idx++) {
     if (statuses.contains(landmark_status_[idx])) {

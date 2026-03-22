@@ -20,6 +20,8 @@
 
 #include "g2o_optimization.h"
 
+#include <chrono>
+
 #include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
@@ -154,6 +156,10 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     Frame& current_frame, std::shared_ptr<Map> map,
     std::shared_ptr<CameraModel> calibration,
     const Sophus::SE3f& previous_camera_transform_world, const float scale) {
+  using Clock = std::chrono::steady_clock;
+  using Ms = std::chrono::milliseconds;
+  const auto t_data_start = Clock::now();
+
   vector<cv::KeyPoint> keypoints =
       current_frame.GetKeypointsWithStatus({TRACKED_WITH_3D});
   vector<Eigen::Vector3f> landmark_positions =
@@ -161,6 +167,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
   vector<ID> mappoints_ids =
       current_frame.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
   const int points_in_optimization = keypoints.size();
+  const auto t_data_done = Clock::now();
 
   if (points_in_optimization == 0) {
     LOG(WARNING) << "[CameraPoseAndDeformationOptimization] No points to "
@@ -292,12 +299,13 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
       }
 
       // Check that the connected point is also being optimized.
-      if (!current_frame.MapPointIdToIndex().contains(mappoint_id_other) ||
-          current_frame.LandmarkStatuses()[current_frame.MapPointIdToIndex().at(
-              mappoint_id_other)] != TRACKED_WITH_3D) {
-        if (current_frame.MapPointIdToIndex().contains(mappoint_id_other) &&
-            current_frame.LandmarkStatuses()[current_frame.MapPointIdToIndex()
-                                                 .at(mappoint_id_other)] !=
+      auto idx_other_in_frame_or =
+          current_frame.GetIndexForMapPoint(mappoint_id_other);
+      if (!idx_other_in_frame_or.ok() ||
+          current_frame.LandmarkStatuses()[*idx_other_in_frame_or] !=
+              TRACKED_WITH_3D) {
+        if (idx_other_in_frame_or.ok() &&
+            current_frame.LandmarkStatuses()[*idx_other_in_frame_or] !=
                 JUST_TRIANGULATED) {
           lost_mappoint_ids.insert(mappoint_id_other);
           lost_mappoint_ids_ordered.insert(mappoint_id_other);
@@ -379,8 +387,13 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
       position_regularizers[idx_other][idx] = position_regularizer;
     }
   }
+  const auto t_graph_done = Clock::now();
+
   vector<int> iterations = {10, 10};
   vector<bool> inliers(points_in_optimization, true);
+
+  int64_t ms_solver = 0;
+  int64_t ms_check = 0;
 
   for (int iteration = 0; iteration < iterations.size(); iteration++) {
     int n_good_regularizers = 0;
@@ -398,8 +411,12 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
       }
     }
 
+    const auto t_sol_start = Clock::now();
     optimizer.initializeOptimization(0);
     optimizer.optimize(iterations[iteration]);
+    const auto t_sol_done = Clock::now();
+    ms_solver +=
+        std::chrono::duration_cast<Ms>(t_sol_done - t_sol_start).count();
 
     // Check reprojection errors.
     for (int idx = 0; idx < points_in_optimization; idx++) {
@@ -439,7 +456,10 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
         }
       }
     }
+    ms_check +=
+        std::chrono::duration_cast<Ms>(Clock::now() - t_sol_done).count();
   }
+  const auto t_solved = Clock::now();
 
   // Recover the optimized camera pose.
   current_frame.MutableCameraTransformationWorld() = Sophus::SE3f(
@@ -481,13 +501,14 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     reprojection_error->computeError();
 
     int index_in_frame =
-        current_frame.MapPointIdToIndex().at(mappoints_ids[idx]);
+        current_frame.GetIndexForMapPoint(mappoints_ids[idx]).value();
 
     const float chi_squared = reprojection_error->chi2();
     if (chi_squared > th_huber_2dof_squared) {
       inliers[idx] = false;
 
       current_frame.LandmarkStatuses()[index_in_frame] = TRACKED;
+      continue;  // Don't overwrite last_world_position with a bad deformation.
     }
 
     LandmarkVertex* deformation_vertex =
@@ -525,6 +546,8 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     current_frame.SetDeformationMaginitud(0.0f);
   }
 
+  const auto t_positions_done = Clock::now();
+
   // Update regularization graph.
   for (int idx = 0; idx < points_in_optimization; idx++) {
     if (!inliers[idx]) {
@@ -534,7 +557,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
     ID mappoint_id = mappoints_ids[idx];
 
     int index_in_frame =
-        current_frame.MapPointIdToIndex().at(mappoints_ids[idx]);
+        current_frame.GetIndexForMapPoint(mappoints_ids[idx]).value();
     Eigen::Vector3f landmark_position =
         current_frame.LandmarkPositions()[index_in_frame];
 
@@ -545,6 +568,27 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
       current_frame.LandmarkStatuses()[index_in_frame] = BAD;
     }
   }
+
+  const auto t_graph_update_done = Clock::now();
+
+  LOG(INFO)
+      << "[DEFORM_PROFILE]"
+      << " n_pts=" << points_in_optimization
+      << " n_reproj=" << n_reprojection_edges
+      << " n_spatial=" << n_spatial_edges << " n_position=" << n_position_edges
+      << " ms_data_collect="
+      << std::chrono::duration_cast<Ms>(t_data_done - t_data_start).count()
+      << " ms_graph_build="
+      << std::chrono::duration_cast<Ms>(t_graph_done - t_data_done).count()
+      << " ms_solver=" << ms_solver << " ms_outlier_check=" << ms_check
+      << " ms_pos_update="
+      << std::chrono::duration_cast<Ms>(t_positions_done - t_solved).count()
+      << " ms_reg_update="
+      << std::chrono::duration_cast<Ms>(t_graph_update_done - t_positions_done)
+             .count()
+      << " ms_total_pre_lost="
+      << std::chrono::duration_cast<Ms>(t_graph_update_done - t_data_start)
+             .count();
 
   if (lost_mappoint_ids.empty()) {
     return lost_mappoint_ids;
@@ -611,8 +655,17 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
 
   camera_pose_vertex->setFixed(true);
 
+  const auto t_lost_sol_start = Clock::now();
   optimizer.initializeOptimization();
   optimizer.optimize(10);
+  const auto t_lost_sol_done = Clock::now();
+
+  LOG(INFO) << "[DEFORM_PROFILE_LOST]"
+            << " n_lost=" << lost_mappoint_ids_ordered.size()
+            << " ms_lost_solver="
+            << std::chrono::duration_cast<Ms>(t_lost_sol_done -
+                                              t_lost_sol_start)
+                   .count();
 
   lost_mappoint_ids.clear();
   for (const auto& [mappoint_id, idx] : lost_mappoint_id_to_index) {

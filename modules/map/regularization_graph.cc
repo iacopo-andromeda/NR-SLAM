@@ -56,9 +56,43 @@ void RegularizationGraph::AddEdge(ID mappoint_id, ID mappoint_id_other,
   graph_[mappoint_id_other][mappoint_id] = edge;
 }
 
+void RegularizationGraph::RemoveVertex(ID mappoint_id) {
+  if (!graph_.contains(mappoint_id)) {
+    return;
+  }
+
+  std::vector<ID> connected_vertices;
+  connected_vertices.reserve(graph_[mappoint_id].size());
+
+  for (const auto& [other_id, edge] : graph_[mappoint_id]) {
+    connected_vertices.push_back(other_id);
+  }
+
+  for (const ID other_id : connected_vertices) {
+    if (!graph_.contains(other_id)) {
+      continue;
+    }
+
+    graph_[other_id].erase(mappoint_id);
+    if (graph_[other_id].empty()) {
+      graph_.erase(other_id);
+    }
+  }
+
+  graph_.erase(mappoint_id);
+}
+
 std::shared_ptr<RegularizationGraph::Edge> RegularizationGraph::GetEdge(
     ID mappoint_id, ID mappoint_id_other) {
-  return graph_[mappoint_id][mappoint_id_other];
+  auto outer_it = graph_.find(mappoint_id);
+  if (outer_it == graph_.end()) {
+    return nullptr;
+  }
+  auto inner_it = outer_it->second.find(mappoint_id_other);
+  if (inner_it == outer_it->second.end()) {
+    return nullptr;
+  }
+  return inner_it->second;
 }
 
 bool EdgeComparator(
@@ -73,6 +107,9 @@ bool EdgeComparator(
 
 std::vector<std::pair<ID, std::shared_ptr<RegularizationGraph::Edge>>>
 RegularizationGraph::GetEdges(ID mappoint_id) const {
+  if (!graph_.contains(mappoint_id)) {
+    return {};
+  }
   vector<pair<ID, std::shared_ptr<RegularizationGraph::Edge>>> edges(
       graph_.at(mappoint_id).begin(), graph_.at(mappoint_id).end());
   sort(edges.begin(), edges.end(), EdgeComparator);
@@ -94,7 +131,6 @@ bool RegularizationGraph::UpdateConnection(
     ID mappoint_id_1, ID mappoint_id_2, Eigen::Vector3f& landmark_position_1,
     Eigen::Vector3f& landmark_position_2) {
   if (!graph_.contains(mappoint_id_1) || !graph_.contains(mappoint_id_2)) {
-    LOG(FATAL) << "Trying to update landmark that is not in the graph.";
     return false;
   }
 
@@ -128,12 +164,14 @@ bool RegularizationGraph::UpdateConnection(
       return true;
     }
   } else {
-    LOG(FATAL) << "Connection was not present in the graph.";
     return false;
   }
 }
 
 int RegularizationGraph::UpdateVertex(ID mappoint_id) {
+  if (!graph_.contains(mappoint_id)) {
+    return 0;
+  }
   Eigen::Vector3f landmark_position =
       map_->GetMapPoint(mappoint_id)->GetLastWorldPosition();
   VertexConnections& connections = graph_[mappoint_id];

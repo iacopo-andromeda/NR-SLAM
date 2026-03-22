@@ -18,28 +18,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NRSLAM_FEATURE_H
-#define NRSLAM_FEATURE_H
+#ifndef NRSLAM_DATASET_INDEX_H
+#define NRSLAM_DATASET_INDEX_H
 
-#include <opencv2/opencv.hpp>
-#include <vector>
+// Strong-type wrapper for dataset image/pose indices.
+//
+// Using ImageIndex instead of a raw int prevents silent signed/unsigned
+// mismatch, makes API intent explicit, and disallows accidental construction
+// from arbitrary integers without a deliberate cast.
+//
+// Usage:
+//   dataset.GetImage(ImageIndex{idx});
+struct ImageIndex {
+  explicit ImageIndex(int v) : value(v) {}
 
-class Feature {
- public:
-  Feature() {};
-
-  /*
-   * Computes KeyPoints in the given image. To be implemented by the children
-   * classes
-   */
-  virtual void Extract(const cv::Mat& im, const cv::Mat& mask,
-                       std::vector<cv::KeyPoint>& keypoints) = 0;
-
-  virtual void AugmentMask(const cv::Mat& mask,
-                           const std::vector<cv::KeyPoint>& keypoints,
-                           cv::Mat& augmented_mask) = 0;
-
- private:
+  int value;
 };
 
-#endif  // NRSLAM_FEATURE_H
+#endif  // NRSLAM_DATASET_INDEX_H

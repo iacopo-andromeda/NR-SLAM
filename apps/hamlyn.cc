@@ -65,10 +65,10 @@ int main(int argc, char** argv) {
 
   for (int idx = starting_frame; idx < end_frame; idx++) {
     LOG(INFO) << "Processing image " << idx;
-    auto im_left = dataset.GetImage(idx);
+    auto im_left = dataset.GetImage(ImageIndex{idx});
     CHECK_OK(im_left);
 
-    auto im_right = dataset.GetRightImage(idx);
+    auto im_right = dataset.GetRightImage(ImageIndex{idx});
     CHECK_OK(im_right);
 
     SLAM.TrackImageWithStereo(*im_left, *im_right);

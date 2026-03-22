@@ -361,7 +361,7 @@ void MapVisualizer::DrawConnectedPoints(
 }
 
 void MapVisualizer::DrawNonTrackedLandmarks() {
-  auto mappoints = map_->GetMapPoints();
+  const auto& mappoints = map_->GetMapPoints();
 
   Frame last_frame = map_->GetLastFrame();
 

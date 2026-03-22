@@ -81,20 +81,26 @@ Hamlyn::Hamlyn(const std::string& video_path,
   }
 }
 
-absl::StatusOr<cv::Mat> Hamlyn::GetImage(const int idx) {
-  if (idx >= left_images_names_.size()) {
-    return absl::InternalError("Image index out boundaries.");
-  }
-
-  return cv::imread(left_images_names_[idx], cv::IMREAD_UNCHANGED);
+int Hamlyn::NumImages() const {
+  return static_cast<int>(left_images_names_.size());
 }
 
-absl::StatusOr<cv::Mat> Hamlyn::GetRightImage(const int idx) {
-  if (idx >= right_images_names.size()) {
-    return absl::InternalError("Image index out boundaries.");
+absl::StatusOr<cv::Mat> Hamlyn::GetImage(ImageIndex idx) {
+  if (idx.value < 0 ||
+      static_cast<size_t>(idx.value) >= left_images_names_.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
   }
 
-  return cv::imread(right_images_names[idx], cv::IMREAD_UNCHANGED);
+  return cv::imread(left_images_names_[idx.value], cv::IMREAD_UNCHANGED);
+}
+
+absl::StatusOr<cv::Mat> Hamlyn::GetRightImage(ImageIndex idx) {
+  if (idx.value < 0 ||
+      static_cast<size_t>(idx.value) >= right_images_names.size()) {
+    return absl::OutOfRangeError("Image index out of range.");
+  }
+
+  return cv::imread(right_images_names[idx.value], cv::IMREAD_UNCHANGED);
 }
 
 bool Hamlyn::SplitVideoIntoFrames(const std::string& path,

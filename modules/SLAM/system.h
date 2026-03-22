@@ -31,6 +31,7 @@
 #include "stereo/stereo_pattern_matching.h"
 #include "tracking/tracking.h"
 #include "utilities/frame_evaluator.h"
+#include "utilities/performance_logger.h"
 #include "utilities/time_profiler.h"
 #include "visualization/image_visualizer.h"
 #include "visualization/map_visualizer.h"
@@ -83,6 +84,14 @@ class System {
   std::unique_ptr<FrameEvaluator> frame_evaluator_;
 
   std::unique_ptr<TimeProfiler> time_profiler_;
+
+  std::unique_ptr<PerformanceLogger> perf_logger_;
+
+  // Monotonically increasing frame counter (used by perf_logger_).
+  uint64_t frame_counter_ = 0;
+
+  // Path where the per-frame CSV will be written.
+  std::string perf_log_csv_path_;
 };
 
 #endif  // NRSLAM_SYSTEM_H

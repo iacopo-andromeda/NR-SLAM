@@ -54,6 +54,20 @@ LucasKanadeTracker::LucasKanadeTracker(const cv::Size winSize,
   Idref_ = vector<vector<Mat>>(maxLevel + 1);
 }
 
+bool LucasKanadeTracker::IsInsidePyramidWindow(const cv::Point2i& p,
+                                               const cv::Size& image_size,
+                                               int border_gap) const {
+  return !(p.x < -border_gap || p.x >= image_size.width - border_gap ||
+           p.y < -border_gap || p.y >= image_size.height - border_gap);
+}
+
+bool LucasKanadeTracker::IsInsideTrackingPoint(const cv::Point2f& p,
+                                               const cv::Size& image_size,
+                                               int border_gap) const {
+  return !(p.x < border_gap + 1 || p.x >= image_size.width - 1 - border_gap ||
+           p.y < border_gap + 1 || p.y >= image_size.height - 1 - border_gap);
+}
+
 void LucasKanadeTracker::SetReferenceImage(const Mat& refIm,
                                            const vector<KeyPoint>& refPts,
                                            const cv::Mat& mask) {
@@ -105,8 +119,7 @@ void LucasKanadeTracker::SetReferenceImage(const Mat& refIm,
       ipoint.x = cvFloor(point.x);
       ipoint.y = cvFloor(point.y);
 
-      if (ipoint.x < -borderGap || ipoint.x >= derivI.cols - borderGap ||
-          ipoint.y < -borderGap || ipoint.y >= derivI.rows - borderGap) {
+      if (!IsInsidePyramidWindow(ipoint, derivI.size(), borderGap)) {
         continue;
       }
 
@@ -263,8 +276,7 @@ int LucasKanadeTracker::Track(const Mat& newIm, std::vector<KeyPoint>& nextPts,
       iprevPt.x = cvFloor(prevPt.x);
       iprevPt.y = cvFloor(prevPt.y);
 
-      if (iprevPt.x < -borderGap || iprevPt.x >= derivJ.cols - borderGap ||
-          iprevPt.y < -borderGap || iprevPt.y >= derivJ.rows - borderGap) {
+      if (!IsInsidePyramidWindow(iprevPt, derivJ.size(), borderGap)) {
         if (level == 0) {
           vMatched[i] = OUT_IMAGE_BOUNDARIES;
         }
@@ -303,8 +315,7 @@ int LucasKanadeTracker::Track(const Mat& newIm, std::vector<KeyPoint>& nextPts,
         inextPt.y = cvFloor(nextPt.y);
 
         // Check that the point is inside the image
-        if (inextPt.x < -borderGap || inextPt.x >= J.cols - borderGap ||
-            inextPt.y < -borderGap || inextPt.y >= J.rows - borderGap) {
+        if (!IsInsidePyramidWindow(inextPt, J.size(), borderGap)) {
           if (level == 0) vMatched[i] = OUT_IMAGE_BOUNDARIES;
           break;
         }
@@ -464,10 +475,7 @@ int LucasKanadeTracker::Track(const Mat& newIm, std::vector<KeyPoint>& nextPts,
         nextPt += delta;
         nextPts[i].pt = nextPt + halfWin;
 
-        if (nextPts[i].pt.x < borderGap + 1 ||
-            nextPts[i].pt.x >= J.cols - 1 - borderGap ||
-            nextPts[i].pt.y < borderGap + 1 ||
-            nextPts[i].pt.y >= J.rows - 1 - borderGap) {
+        if (!IsInsideTrackingPoint(nextPts[i].pt, J.size(), borderGap)) {
           if (level == 0) vMatched[i] = OUT_IMAGE_BOUNDARIES;
           break;
         }
@@ -530,8 +538,7 @@ int LucasKanadeTracker::Track(const Mat& newIm, std::vector<KeyPoint>& nextPts,
       int x, y;
       Mat Jvalid(winSize_, CV_8U);
 
-      if (inextPt.x < -borderGap || inextPt.x >= J.cols - borderGap * 2 ||
-          inextPt.y < -borderGap || inextPt.y >= J.rows - borderGap * 2) {
+      if (!IsInsidePyramidWindow(inextPt, J.size(), borderGap * 2)) {
         vMatched[i] = OUT_IMAGE_BOUNDARIES;
         continue;
       }

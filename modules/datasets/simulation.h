@@ -25,17 +25,21 @@
 #include <string>
 
 #include "absl/status/statusor.h"
+#include "datasets/dataset_index.h"
 #include "sophus/se3.hpp"
 
 class Simulation {
  public:
   Simulation(const std::string& dataset_path);
 
-  absl::StatusOr<cv::Mat> GetImage(const int idx);
+  // Returns the total number of images in the dataset.
+  int NumImages() const;
 
-  absl::StatusOr<cv::Mat> GetDepthImage(const int idx);
+  absl::StatusOr<cv::Mat> GetImage(ImageIndex idx);
 
-  absl::StatusOr<Sophus::SE3f> GetCameraPose(const int idx);
+  absl::StatusOr<cv::Mat> GetDepthImage(ImageIndex idx);
+
+  absl::StatusOr<Sophus::SE3f> GetCameraPose(ImageIndex idx);
 
  private:
   void GenerateNamesFile(const std::string& images_path);

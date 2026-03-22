@@ -21,6 +21,7 @@
 #include "settings.h"
 
 #include "absl/log/log.h"
+#include "calibration/camera_parameters.h"
 #include "calibration/distorted_pin_hole.h"
 #include "calibration/kannala_brandt_8.h"
 #include "calibration/pin_hole.h"
@@ -92,7 +93,6 @@ Settings::Settings(const std::string& configFile) {
 
   // Read camera model
   string cameraModel = (string)fSettings["Camera.model"];
-  vector<float> vCalibration;
   if (cameraModel == "PinHole") {
     // Read camera calibration
     float fx = fSettings["Camera.fx"];
@@ -100,9 +100,7 @@ Settings::Settings(const std::string& configFile) {
     float cx = fSettings["Camera.cx"];
     float cy = fSettings["Camera.cy"];
 
-    vCalibration = {fx, fy, cx, cy};
-
-    calibration_ = shared_ptr<CameraModel>(new PinHole(vCalibration));
+    calibration_ = std::make_shared<PinHole>(PinholeParameters{fx, fy, cx, cy});
   } else if (cameraModel == "KannalaBrandt8") {
     float fx = fSettings["Camera.fx"];
     float fy = fSettings["Camera.fy"];
@@ -114,9 +112,8 @@ Settings::Settings(const std::string& configFile) {
     float k2 = fSettings["Camera.k2"];
     float k3 = fSettings["Camera.k3"];
 
-    vCalibration = {fx, fy, cx, cy, k0, k1, k2, k3};
-
-    calibration_ = shared_ptr<CameraModel>(new KannalaBrandt8(vCalibration));
+    calibration_ = std::make_shared<KannalaBrandt8>(
+        KannalaBrandt8Parameters{fx, fy, cx, cy, k0, k1, k2, k3});
   } else if (cameraModel == "DistortedPinHole") {
     float fx = fSettings["Camera.fx"];
     float fy = fSettings["Camera.fy"];
@@ -128,11 +125,9 @@ Settings::Settings(const std::string& configFile) {
     float k2 = fSettings["Camera.k2"];
     float p1 = fSettings["Camera.p1"];
     float p2 = fSettings["Camera.p2"];
-    float k3 = fSettings["Camera.k3"];
 
-    vCalibration = {fx, fy, cx, cy, k1, k2, p1, p2, k3};
-
-    calibration_ = shared_ptr<CameraModel>(new DistortedPinHole(vCalibration));
+    calibration_ = std::make_shared<DistortedPinHole>(
+        DistortedPinholeParameters{fx, fy, cx, cy, k1, k2, p1, p2});
   } else {
     LOG(ERROR) << "Error: " << cameraModel << " not known";
     exit(-1);
@@ -148,8 +143,6 @@ Settings::Settings(const std::string& configFile) {
   masker_ = std::make_shared<Masker>();
   masker_->loadFromTxt(filterFile);
   LOG(INFO) << masker_->printFilters();
-
-  radPerPixel_ = (float)fSettings["Camera.radiansPerPixel"];
 
   // Read Map Visualization initial view points
   bool found;
@@ -193,6 +186,89 @@ Settings::Settings(const std::string& configFile) {
     LOG(ERROR) << "Parameter Evaluation.save_path not found";
     exit(-1);
   }
+
+  cv::FileNode lost_stride_node =
+      fSettings["Tracking.lost_bootstrap_frame_stride"];
+  if (!lost_stride_node.empty()) {
+    const int loaded_stride = static_cast<int>(lost_stride_node);
+    if (loaded_stride > 0) {
+      lost_bootstrap_frame_stride_ = loaded_stride;
+    } else {
+      LOG(WARNING) << "Tracking.lost_bootstrap_frame_stride must be >= 1. "
+                   << "Using default value 1.";
+      lost_bootstrap_frame_stride_ = 1;
+    }
+  }
+
+  cv::FileNode triangulation_lookback_node =
+      fSettings["Tracking.triangulation_track_lookback_frames"];
+  if (!triangulation_lookback_node.empty()) {
+    const int loaded_lookback = static_cast<int>(triangulation_lookback_node);
+    if (loaded_lookback > 0) {
+      triangulation_track_lookback_frames_ = loaded_lookback;
+    } else {
+      LOG(WARNING)
+          << "Tracking.triangulation_track_lookback_frames must be >= 1. "
+          << "Using default value 5.";
+      triangulation_track_lookback_frames_ = 5;
+    }
+  }
+
+  cv::FileNode min_mappoint_distance_node =
+      fSettings["Tracking.min_mappoint_distance"];
+  if (!min_mappoint_distance_node.empty()) {
+    const float loaded_min_distance =
+        static_cast<float>(min_mappoint_distance_node);
+    if (loaded_min_distance >= 0.f) {
+      min_mappoint_distance_ = loaded_min_distance;
+    } else {
+      LOG(WARNING) << "Tracking.min_mappoint_distance must be >= 0. "
+                   << "Using default value 0.02.";
+      min_mappoint_distance_ = 0.02f;
+    }
+  }
+
+  // --- Optional tracking / KLT parameters ---
+  auto read_int_opt = [&](const char* key, int& dest) {
+    cv::FileNode n = fSettings[key];
+    if (!n.empty()) {
+      int v = static_cast<int>(n);
+      if (v > 0) dest = v;
+    }
+  };
+  auto read_float_opt = [&](const char* key, float& dest) {
+    cv::FileNode n = fSettings[key];
+    if (!n.empty()) {
+      float v = static_cast<float>(n);
+      if (v > 0.f) dest = v;
+    }
+  };
+  auto read_float_nonneg = [&](const char* key, float& dest) {
+    cv::FileNode n = fSettings[key];
+    if (!n.empty()) {
+      float v = static_cast<float>(n);
+      if (v >= 0.f) dest = v;
+    }
+  };
+
+  read_int_opt("Tracking.klt_window_size", klt_window_size_);
+  read_int_opt("Tracking.klt_max_level", klt_max_level_);
+  read_int_opt("Tracking.klt_max_iters", klt_max_iters_);
+  read_float_nonneg("Tracking.klt_epsilon", klt_epsilon_);
+  read_float_nonneg("Tracking.klt_min_eig_th", klt_min_eig_th_);
+  read_float_nonneg("Tracking.klt_min_SSIM", klt_min_SSIM_);
+  read_int_opt("Tracking.images_to_insert_keyframe",
+               images_to_insert_keyframe_);
+  read_int_opt("Tracking.stale_mappoint_max_age_frames",
+               stale_mappoint_max_age_frames_);
+  read_int_opt("Tracking.min_tracked_points_abort", min_tracked_points_abort_);
+  read_int_opt("Tracking.lost_recovery_grace_frames",
+               lost_recovery_grace_frames_);
+  read_int_opt("Tracking.lost_recovery_min_tracked_points",
+               lost_recovery_min_tracked_points_);
+  read_int_opt("Features.max_corners", feature_max_corners_);
+  read_float_opt("Features.quality_level", feature_quality_level_);
+  read_float_opt("Features.min_distance", feature_min_distance_);
 }
 
 ostream& operator<<(std::ostream& output, const Settings& settings) {
@@ -217,8 +293,6 @@ float Settings::getBf() { return bf_; }
 
 std::shared_ptr<Masker> Settings::getMasker() { return masker_; }
 
-float Settings::getRadPerPixel() { return radPerPixel_; }
-
 Sophus::SE3f Settings::GetLeftMapVisualizationView() { return left_map_view_; }
 
 Sophus::SE3f Settings::GetRightMapVisualizationView() {
@@ -238,3 +312,34 @@ std::string Settings::GetImageVisualizerPath() {
 }
 
 std::string Settings::GetEvaluationPath() { return evaluation_save_path_; }
+
+int Settings::GetLostBootstrapFrameStride() {
+  return lost_bootstrap_frame_stride_;
+}
+
+int Settings::GetTriangulationTrackLookbackFrames() {
+  return triangulation_track_lookback_frames_;
+}
+
+float Settings::GetMinMapPointDistance() { return min_mappoint_distance_; }
+
+int Settings::GetKltWindowSize() { return klt_window_size_; }
+int Settings::GetKltMaxLevel() { return klt_max_level_; }
+int Settings::GetKltMaxIters() { return klt_max_iters_; }
+float Settings::GetKltEpsilon() { return klt_epsilon_; }
+float Settings::GetKltMinEigTh() { return klt_min_eig_th_; }
+float Settings::GetKltMinSSIM() { return klt_min_SSIM_; }
+int Settings::GetImagesToInsertKeyframe() { return images_to_insert_keyframe_; }
+int Settings::GetStaleMapPointMaxAgeFrames() {
+  return stale_mappoint_max_age_frames_;
+}
+int Settings::GetMinTrackedPointsAbort() { return min_tracked_points_abort_; }
+int Settings::GetLostRecoveryGraceFrames() {
+  return lost_recovery_grace_frames_;
+}
+int Settings::GetLostRecoveryMinTrackedPoints() {
+  return lost_recovery_min_tracked_points_;
+}
+int Settings::GetFeatureMaxCorners() { return feature_max_corners_; }
+float Settings::GetFeatureQualityLevel() { return feature_quality_level_; }
+float Settings::GetFeatureMinDistance() { return feature_min_distance_; }

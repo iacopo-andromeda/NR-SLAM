@@ -46,8 +46,6 @@ MonocularMapInitializer::MonocularMapInitializer(
       options_.rigid_initializer_min_sample_set_size;
   essential_matrix_initializer_options.min_parallax =
       options_.rigid_initializer_min_parallax;
-  essential_matrix_initializer_options.radians_per_pixel =
-      options_.rigid_initializer_radians_per_pixel;
   essential_matrix_initializer_options.epipolar_threshold =
       options_.rigid_initializer_epipolar_threshold;
   rigid_initializer_ = make_unique<EssentialMatrixInitialization>(
@@ -60,10 +58,43 @@ MonocularMapInitializer::MonocularMapInitializer(
 
 absl::StatusOr<MonocularMapInitializer::InitializationResults>
 MonocularMapInitializer::ProcessNewImage(const cv::Mat& im,
-                                         const cv::Mat& im_clahe,
                                          const cv::Mat& mask) {
   // Track features and update the feature tracks.
-  DataAssociation(im, im_clahe, mask);
+  DataAssociation(im, mask);
+
+  int tracked_now = 0;
+  int bad_feature_now = 0;
+  int out_of_bounds_now = 0;
+  int bad_now = 0;
+  for (const auto status : current_keypoint_statuses_) {
+    if (status == TRACKED) {
+      tracked_now++;
+    } else if (status == BAD_FEATURE) {
+      bad_feature_now++;
+    } else if (status == OUT_IMAGE_BOUNDARIES) {
+      out_of_bounds_now++;
+    } else if (status == BAD) {
+      bad_now++;
+    }
+  }
+
+  int full_length_tracks = 0;
+  const int max_track_length = feature_tracks_.max_feature_track_lenght;
+  for (const auto& [feature_id, feature_track] :
+       feature_tracks_.feature_id_to_feature_track) {
+    if (feature_track.track_.size() == max_track_length) {
+      full_length_tracks++;
+    }
+  }
+
+  LOG(INFO) << "[INIT_DIAG] status=" << internal_status_
+            << " keypoints_total=" << current_keypoints_.size()
+            << " tracked_now=" << tracked_now
+            << " bad_feature=" << bad_feature_now
+            << " out_of_bounds=" << out_of_bounds_now << " bad=" << bad_now
+            << " n_tracks_in_image=" << n_tracks_in_image_
+            << " max_track_length=" << max_track_length
+            << " full_length_tracks=" << full_length_tracks;
 
   if (internal_status_ == RECENTLY_RESET) {
     LOG(WARNING)
@@ -92,7 +123,6 @@ MonocularMapInitializer::ProcessNewImage(const cv::Mat& im,
 }
 
 void MonocularMapInitializer::ResetInitialization(const cv::Mat& im,
-                                                  const cv::Mat& im_clahe,
                                                   const cv::Mat& mask) {
   // Clear previous data.
   current_keypoints_.clear();
@@ -100,10 +130,12 @@ void MonocularMapInitializer::ResetInitialization(const cv::Mat& im,
   feature_tracks_.max_feature_track_lenght = 0;
   feature_tracks_.feature_id_to_feature_track.clear();
 
-  ExtractFeatures(im_clahe, mask, current_keypoints_);
+  ExtractFeatures(im, mask, current_keypoints_);
+  LOG(INFO) << "[INIT_DIAG] reset extracted_features="
+            << current_keypoints_.size();
 
   // Initialize KLT.
-  klt_tracker_.SetReferenceImage(im_clahe, current_keypoints_);
+  klt_tracker_.SetReferenceImage(im, current_keypoints_);
 
   current_keypoint_statuses_.resize(current_keypoints_.size());
   fill(current_keypoint_statuses_.begin(), current_keypoint_statuses_.end(),
@@ -118,10 +150,10 @@ void MonocularMapInitializer::ResetInitialization(const cv::Mat& im,
 }
 
 void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
-                                              const cv::Mat& im_clahe,
                                               const cv::Mat& mask) {
   if (internal_status_ == NO_DATA) {
-    ResetInitialization(im, im_clahe, mask);
+    LOG(INFO) << "[INIT_DIAG] NO_DATA -> reset initialization";
+    ResetInitialization(im, mask);
   } else {
     // Track features.
     n_tracks_in_image_ =
@@ -134,16 +166,19 @@ void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
           << "Data association reset: tracked features " << n_tracks_in_image_
           << " below minimum "
           << EssentialMatrixInitialization::MINIMUM_TRIANGULATED_POINTS;
-      ResetInitialization(im, im_clahe, mask);
+      ResetInitialization(im, mask);
     } else {
       images_from_last_reference_++;
       internal_status_ = OK;
+      LOG(INFO) << "[INIT_DIAG] data association ok: tracked="
+                << n_tracks_in_image_ << " images_from_last_reference="
+                << images_from_last_reference_;
 
       // Update KLT reference image if needed.
       if (images_from_last_reference_ > 30) {
         LOG(WARNING)
             << "Data association reset: reference age exceeded 30 frames";
-        ResetInitialization(im, im_clahe, mask);
+        ResetInitialization(im, mask);
 
         images_from_last_reference_ = 0;
       }
@@ -247,6 +282,9 @@ MonocularMapInitializer::RigidInitializationResults
 MonocularMapInitializer::RigidInitialization() {
   Sophus::SE3f camera_transform_world;
   std::vector<absl::StatusOr<Eigen::Vector3f>> landmarks_position;
+  LOG(INFO) << "[INIT_DIAG] rigid init input: current_keypoints="
+            << current_keypoints_.size()
+            << " tracked_in_image=" << n_tracks_in_image_;
   auto status = rigid_initializer_->Initialize(
       current_keypoints_, current_keypoint_statuses_, n_tracks_in_image_,
       camera_transform_world, landmarks_position);

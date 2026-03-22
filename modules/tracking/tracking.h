@@ -43,7 +43,18 @@ class Tracking {
 
     int images_to_insert_keyframe = 5;
 
-    float radians_per_pixel;
+    int stale_mappoint_max_age_frames = 30;
+
+    int lost_bootstrap_frame_stride = 1;
+
+    int min_tracked_points_abort = 10;
+    int lost_recovery_grace_frames = 5;
+    int lost_recovery_min_tracked_points = 3;
+
+    // Shi-Tomasi feature extraction
+    int feature_max_corners = 1000;
+    float feature_quality_level = 0.1f;
+    float feature_min_distance = 7.0f;
   };
 
   enum TrackingStatus { NOT_INITIALIZED, TRACKING, LOST };
@@ -56,18 +67,16 @@ class Tracking {
            TimeProfiler* time_profiler);
 
   void TrackImage(const cv::Mat& im,
-                  const absl::flat_hash_map<std::string, cv::Mat>& masks,
-                  const cv::Mat& additional_im = cv::Mat(),
-                  const cv::Mat& im_clahe = cv::Mat());
+                  const absl::flat_hash_map<std::string, cv::Mat>& masks);
 
   TrackingStatus GetTrackingStatus() const;
 
  private:
   void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
-                       std::vector<cv::KeyPoint>& keypoints);
+                       const std::vector<cv::KeyPoint>& extracted_keypoints,
+                       std::vector<cv::KeyPoint>& new_keypoints);
 
-  void MonocularMapInitialization(const cv::Mat& im_left, const cv::Mat& mask,
-                                  const cv::Mat& im_clahe);
+  void MonocularMapInitialization(const cv::Mat& im_left, const cv::Mat& mask);
 
   absl::flat_hash_set<ID> TrackCameraAndDeformation(const cv::Mat& im,
                                                     const cv::Mat& mask);
@@ -98,6 +107,22 @@ class Tracking {
 
   void UpdateTriangulatedPoints();
 
+  void MarkTrackedMapPointsSeen(const int frame_id);
+
+  void SeedMapPointLastSeen(const int frame_id);
+
+  void PruneStaleMapPointCache(const int frame_id);
+
+  bool IsMapPointStale(const ID mappoint_id, const int frame_id) const;
+
+  // Re-bootstrap the map from scratch using the monocular initializer when the
+  // system is in LOST state. Returns true when enough parallax has accumulated
+  // and new 3D landmarks have been inserted into the map.
+  bool LostModeBootstrap(const cv::Mat& im, const cv::Mat& mask);
+
+  // Resets the monocular initializer so it starts fresh for re-bootstrap.
+  void ResetMonocularInitializer();
+
   Options options_;
 
   std::shared_ptr<Map> map_;
@@ -121,6 +146,14 @@ class Tracking {
   TrackingStatus tracking_status_;
 
   Sophus::SE3f previous_camera_transform_world_;
+
+  absl::flat_hash_map<ID, int> mappoint_last_seen_frame_;
+
+  // Camera pose recorded the moment the system transitions to LOST, used as
+  // the reference-frame world pose during re-bootstrap triangulation.
+  Sophus::SE3f pose_at_lost_entry_;
+
+  int recovery_grace_frames_remaining_ = 0;
 
   TimeProfiler* time_profiler_;
 };

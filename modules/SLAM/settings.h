@@ -50,8 +50,6 @@ class Settings {
 
   std::shared_ptr<Masker> getMasker();
 
-  float getRadPerPixel();
-
   Sophus::SE3f GetLeftMapVisualizationView();
   Sophus::SE3f GetRightMapVisualizationView();
 
@@ -65,6 +63,32 @@ class Settings {
 
   std::string GetEvaluationPath();
 
+  int GetLostBootstrapFrameStride();
+
+  int GetTriangulationTrackLookbackFrames();
+
+  float GetMinMapPointDistance();
+
+  // KLT / Tracking parameters
+  int GetKltWindowSize();
+  int GetKltMaxLevel();
+  int GetKltMaxIters();
+  float GetKltEpsilon();
+  float GetKltMinEigTh();
+  float GetKltMinSSIM();
+
+  // Keyframe & map-point parameters
+  int GetImagesToInsertKeyframe();
+  int GetStaleMapPointMaxAgeFrames();
+  int GetMinTrackedPointsAbort();
+  int GetLostRecoveryGraceFrames();
+  int GetLostRecoveryMinTrackedPoints();
+
+  // Feature extraction parameters
+  int GetFeatureMaxCorners();
+  float GetFeatureQualityLevel();
+  float GetFeatureMinDistance();
+
  private:
   // Camera parameters
   std::shared_ptr<CameraModel>
@@ -73,8 +97,6 @@ class Settings {
   float bf_;         // baseline times fx
 
   std::shared_ptr<Masker> masker_;
-
-  float radPerPixel_;
 
   Sophus::SE3f left_map_view_, right_map_view_;
 
@@ -87,6 +109,30 @@ class Settings {
   std::string image_visualizer_save_path_;
 
   std::string evaluation_save_path_;
+
+  int lost_bootstrap_frame_stride_ = 1;
+  int triangulation_track_lookback_frames_ = 5;
+  float min_mappoint_distance_ = 0.02f;
+
+  // KLT / Tracking defaults (match system.cc hardcoded values)
+  int klt_window_size_ = 21;
+  int klt_max_level_ = 4;
+  int klt_max_iters_ = 10;
+  float klt_epsilon_ = 0.0001f;
+  float klt_min_eig_th_ = 0.0001f;
+  float klt_min_SSIM_ = 0.65f;
+
+  // Keyframe & map-point defaults
+  int images_to_insert_keyframe_ = 5;
+  int stale_mappoint_max_age_frames_ = 30;
+  int min_tracked_points_abort_ = 10;
+  int lost_recovery_grace_frames_ = 5;
+  int lost_recovery_min_tracked_points_ = 3;
+
+  // Feature extraction defaults
+  int feature_max_corners_ = 1000;
+  float feature_quality_level_ = 0.1f;
+  float feature_min_distance_ = 7.0f;
 
   template <typename T>
   T readParameter(cv::FileStorage& fSettings, const std::string& name,

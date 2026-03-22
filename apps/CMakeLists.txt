@@ -31,4 +31,4 @@ target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags a
 
 set(PROGRAM_NAME andromeda)
 add_executable(${PROGRAM_NAME} andromeda.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status ${NR_SLAM_MODULE_LINK_GROUP})
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status absl::log_sink_registry ${NR_SLAM_MODULE_LINK_GROUP})

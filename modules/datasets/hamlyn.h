@@ -26,6 +26,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/statusor.h"
+#include "datasets/dataset_index.h"
 
 class Hamlyn {
  public:
@@ -39,9 +40,12 @@ class Hamlyn {
   /*
    * Retrieves the i-th image in the sequence
    */
-  absl::StatusOr<cv::Mat> GetImage(const int idx);
+  // Returns the total number of images in the dataset.
+  int NumImages() const;
 
-  absl::StatusOr<cv::Mat> GetRightImage(const int idx);
+  absl::StatusOr<cv::Mat> GetImage(ImageIndex idx);
+
+  absl::StatusOr<cv::Mat> GetRightImage(ImageIndex idx);
 
  private:
   /*

@@ -21,14 +21,70 @@ Camera.p1: 0.01929
 Camera.p2: 0.00561
 Camera.k3: -6.387
 
-Camera.radiansPerPixel: 0.0022
-
-
 Masking.filterFile: "./data/andromeda/filters.txt"
 
 Visualization.cameraSize: 0.5
 
-System.autoplay: 0
+System.autoplay: 1
+
+# ---------------------------------------------------------------------------
+# Tracking parameters
+# ---------------------------------------------------------------------------
+
+# Use every Nth frame only while in LOST bootstrap mode (1 disables skipping).
+Tracking.lost_bootstrap_frame_stride: 3
+
+# Keep at most this many frames of lookback per feature track for triangulation.
+Tracking.triangulation_track_lookback_frames: 5
+
+# Minimum 3D spacing between existing and newly added map points (world units).
+Tracking.min_mappoint_distance: 0.02
+
+# KLT optical-flow window half-size (pixels on each side, so 21 => 21x21 window).
+Tracking.klt_window_size: 21
+
+# Number of image pyramid levels for KLT.
+Tracking.klt_max_level: 4
+
+# Maximum KLT iterations per pyramid level.
+Tracking.klt_max_iters: 10
+
+# KLT convergence epsilon (sub-pixel accuracy threshold).
+Tracking.klt_epsilon: 0.0001
+
+# KLT minimum eigenvalue threshold – tracked points below this are discarded.
+Tracking.klt_min_eig_th: 0.0001
+
+# Minimum SSIM score to accept a tracked point (0..1; higher = stricter).
+Tracking.klt_min_SSIM: 0.65
+
+# Insert a new keyframe after this many tracked frames.
+Tracking.images_to_insert_keyframe: 5
+
+# Remove a map point that has not been observed for this many frames.
+Tracking.stale_mappoint_max_age_frames: 30
+
+# Abort tracking (declare LOST) when fewer than this many points are tracked.
+Tracking.min_tracked_points_abort: 10
+
+# After re-detection, wait this many frames before declaring recovery successful.
+Tracking.lost_recovery_grace_frames: 5
+
+# Minimum tracked points required to exit grace period and resume normal tracking.
+Tracking.lost_recovery_min_tracked_points: 3
+
+# ---------------------------------------------------------------------------
+# Feature extraction parameters (Shi-Tomasi / goodFeaturesToTrack)
+# ---------------------------------------------------------------------------
+
+# Maximum number of corners to detect per frame.
+Features.max_corners: 1000
+
+# Minimum quality level relative to the best corner (0..1).
+Features.quality_level: 0.1
+
+# Minimum Euclidean distance between detected corners (pixels).
+Features.min_distance: 7.0
 
 # Set the below variables to valid paths to save outputs
 MapVisualizer.save_path: "/tmp/slam_out/map_viz/"

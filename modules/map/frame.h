@@ -26,7 +26,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "map/frame_observation.h"
 #include "map/keyframe.h"
 #include "map/mappoint.h"
 #include "sophus/se3.hpp"
@@ -44,9 +46,17 @@ class Frame {
 
   void SetFromKeyFrame(std::shared_ptr<KeyFrame> keyframe);
 
+  // UNIFIED ACCESS: Single vector of observations (replaces 4 parallel arrays)
+  std::vector<FrameObservation>& Observations();
+  const std::vector<FrameObservation>& Observations() const;
+
   std::vector<cv::KeyPoint>& Keypoints();
 
   std::vector<cv::KeyPoint> GetKeypointsWithStatus(
+      const absl::flat_hash_set<LandmarkStatus> statuses) const;
+
+  // Count-only variant: avoids allocating a temporary vector just for .size().
+  int CountKeypointsWithStatus(
       const absl::flat_hash_set<LandmarkStatus> statuses) const;
 
   std::vector<Eigen::Vector3f>& LandmarkPositions();
@@ -83,6 +93,16 @@ class Frame {
   std::vector<ID> GetMapPointsIdsWithStatus(
       const absl::flat_hash_set<LandmarkStatus> statuses);
 
+  absl::StatusOr<int> GetIndexForMapPoint(ID mappoint_id) const;
+
+  absl::StatusOr<ID> GetMapPointIdForIndex(int idx) const;
+
+  absl::Status SetStatusForMapPoint(ID mappoint_id, LandmarkStatus status);
+
+  // Returns the feature track ID for the observation at position idx.
+  // Prefer this over reading keypoint.class_id directly.
+  int GetTrackIdForIndex(int idx) const;
+
   std::vector<absl::StatusOr<Eigen::Vector3f>>& MutableGroundTruth();
 
   std::vector<absl::StatusOr<Eigen::Vector3f>> GroundTruth();
@@ -101,10 +121,15 @@ class Frame {
   float GetDeformationMagnitud();
 
  private:
+  // UNIFIED STORAGE: All observation data now in single struct vector
+  // This eliminates the risk of 4 parallel vectors getting out of sync
+  std::vector<FrameObservation> observations_;
+
+  // Legacy fields maintained for backward compatibility
+  // These will be removed in a follow-up fix after all callers are updated
   std::vector<cv::KeyPoint> keypoints_;
   std::vector<Eigen::Vector3f> landmark_positions_;
   std::vector<LandmarkStatus> landmark_status_;
-
   std::vector<absl::StatusOr<Eigen::Vector3f>> landmark_ground_truth_;
 
   absl::flat_hash_map<ID, int> mappoint_id_to_index_;
@@ -115,6 +140,17 @@ class Frame {
   int id_ = 0;
 
   float median_deformation_magnitud_;
+
+  // Sync state between unified and legacy storage.
+  // Legacy vectors are treated as the hot-path representation.
+  bool legacy_dirty_ = false;
+  bool observations_dirty_ = false;
+
+  // Helper: sync observations_ to legacy vectors
+  void SyncLegacyVectors();
+
+  // Helper: sync legacy vectors to observations_
+  void SyncFromLegacyVectors();
 };
 
 #endif  // NRSLAM_FRAME_H

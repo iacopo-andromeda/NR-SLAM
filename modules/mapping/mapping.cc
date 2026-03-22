@@ -20,8 +20,10 @@
 
 #include "mapping.h"
 
+#include <chrono>
 #include <fstream>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "optimization/g2o_optimization.h"
@@ -67,6 +69,8 @@ void Mapping::FrameMapping() {
 }
 
 void Mapping::LandmarkTriangulation() {
+  const auto t0 = std::chrono::steady_clock::now();
+
   auto temporal_buffer = map_->GetTemporalBuffer();
 
   // Iterate over the KeyPoints tracked in the last frame
@@ -76,14 +80,31 @@ void Mapping::LandmarkTriangulation() {
   auto current_frame = map_->GetMutableLastFrame();
 
   int triangulated_landmarks = 0;
+  const int n_candidates = triangulation_candidate_ids.size();
 
   const int current_frame_id = current_frame->GetId() - 1;
 
   int n_rigid_triangulations = 0;
   int n_deformable_triangulations = 0;
 
-  vector<absl::StatusOr<Eigen::Vector3f>> rigid_triangulations;
-  vector<absl::StatusOr<Eigen::Vector3f>> deformable_triangulations;
+  int n_rejected_close_features = 0;
+  int n_rejected_short_track = 0;
+  int n_rigid_failed_rigidity = 0;
+  int n_rigid_failed_triangulation = 0;
+  int n_rigid_failed_parallax = 0;
+  int n_rigid_failed_negative_depth = 0;
+  int n_rigid_failed_reprojection = 0;
+  int n_selected_rigid = 0;
+  int n_selected_deformable = 0;
+  int n_selection_tie = 0;
+  int n_selected_invalid_status = 0;
+  int n_failed_nan = 0;
+  int n_failed_index = 0;
+
+  absl::flat_hash_map<int, absl::StatusOr<Eigen::Vector3f>>
+      rigid_triangulations;
+  absl::flat_hash_map<int, absl::StatusOr<Eigen::Vector3f>>
+      deformable_triangulations;
 
   // Try to triangulate candidates.
   vector<int> candidates_triangulated;
@@ -91,12 +112,13 @@ void Mapping::LandmarkTriangulation() {
   for (auto candidate_id : triangulation_candidate_ids) {
     // Check there are no close features.
     auto neighbour_ids = temporal_buffer->GetClosestMapPointsToFeature(
-        candidate_id, 10, 20, 500);
+        candidate_id, 10, 20, 60);
     if (neighbour_ids.empty()) {
-      rigid_triangulations.push_back(absl::InternalError("Close features"));
-      deformable_triangulations.push_back(
-          absl::InternalError("Close features"));
-      continue;
+      n_rejected_close_features++;
+      deformable_triangulations[candidate_id] =
+          absl::InternalError("Close features");
+      // Do not continue here: rigid triangulation can still succeed without
+      // local neighbours.
     }
 
     if (temporal_buffer->TrackLenght(candidate_id) >= 5) {
@@ -105,129 +127,162 @@ void Mapping::LandmarkTriangulation() {
 
       if (landmark_triangulated.ok()) {
         if ((*landmark_triangulated).hasNaN()) {
-          deformable_triangulations.push_back(absl::InternalError("NaN."));
+          deformable_triangulations[candidate_id] = absl::InternalError("NaN.");
         } else {
-          deformable_triangulations.push_back(landmark_triangulated);
+          deformable_triangulations[candidate_id] = landmark_triangulated;
           if (landmark_triangulated.ok()) {
             n_deformable_triangulations++;
           }
         }
       } else {
-        deformable_triangulations.push_back(landmark_triangulated);
+        deformable_triangulations[candidate_id] = landmark_triangulated;
       }
 
     } else {
-      deformable_triangulations.push_back(absl::InternalError("Short track"));
+      n_rejected_short_track++;
+      deformable_triangulations[candidate_id] = absl::InternalError(
+          "Short track: " +
+          to_string(temporal_buffer->TrackLenght(candidate_id)));
     }
 
     // Recover feature track.
     auto candidate_track = temporal_buffer->GetFeatureTrack(candidate_id);
+    if (candidate_track.size() < 2) {
+      n_rigid_failed_triangulation++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Short rigid track");
+      continue;
+    }
 
-    const auto& [current_frame_id, current_keypoint] = candidate_track.front();
-    const auto& [previous_frame_id, previous_keypoint] = candidate_track.back();
+    const auto& [oldest_frame_id, oldest_keypoint] = candidate_track.front();
+    const auto& [newest_frame_id, newest_keypoint] = candidate_track.back();
 
     // Rigidity condition.
-    if (!temporal_buffer->CheckRigidity(current_frame_id, previous_frame_id,
+    if (!temporal_buffer->CheckRigidity(oldest_frame_id, newest_frame_id,
                                         0.004)) {
-      rigid_triangulations.push_back(
-          absl::InternalError("Rigidity not detected"));
+      n_rigid_failed_rigidity++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Rigidity not detected");
       continue;
     }
 
     // Unproject rays.
-    Eigen::Vector3f current_ray =
-        calibration_->Unproject(current_keypoint.pt.x, current_keypoint.pt.y)
+    Eigen::Vector3f oldest_ray =
+        calibration_->Unproject(oldest_keypoint.pt.x, oldest_keypoint.pt.y)
             .normalized();
-    Eigen::Vector3f previous_ray =
-        calibration_->Unproject(previous_keypoint.pt.x, previous_keypoint.pt.y)
+    Eigen::Vector3f newest_ray =
+        calibration_->Unproject(newest_keypoint.pt.x, newest_keypoint.pt.y)
             .normalized();
 
     // Get camera poses.
-    auto current_camera_transform_world =
-        temporal_buffer->GetCameraTransformWorld(current_frame_id);
-    auto previous_camera_transform_world =
-        temporal_buffer->GetCameraTransformWorld(previous_frame_id);
+    auto oldest_camera_transform_world =
+        temporal_buffer->GetCameraTransformWorld(oldest_frame_id);
+    auto newest_camera_transform_world =
+        temporal_buffer->GetCameraTransformWorld(newest_frame_id);
 
     auto landmark_position_status = TriangulateMidPoint(
-        previous_ray, current_ray, *previous_camera_transform_world,
-        *current_camera_transform_world);
+        oldest_ray, newest_ray, *oldest_camera_transform_world,
+        *newest_camera_transform_world);
 
     if (!landmark_position_status.ok()) {
-      rigid_triangulations.push_back(landmark_position_status);
+      n_rigid_failed_triangulation++;
+      rigid_triangulations[candidate_id] = landmark_position_status;
+      continue;
+    }
+
+    if ((*landmark_position_status).hasNaN()) {
+      n_failed_nan++;
+      rigid_triangulations[candidate_id] = absl::InternalError("NaN.");
       continue;
     }
 
     Eigen::Vector3f normal_1 =
         (*landmark_position_status) -
-        (*current_camera_transform_world).inverse().translation();
+        (*newest_camera_transform_world).inverse().translation();
     Eigen::Vector3f normal_2 =
         (*landmark_position_status) -
-        (*previous_camera_transform_world).inverse().translation();
+        (*oldest_camera_transform_world).inverse().translation();
     float parallax = RaysParallax(normal_1, normal_2);
 
-    if (parallax < options_.rad_per_pixel * 10.f ||
-        parallax > options_.rad_per_pixel * 20.f) {
-      rigid_triangulations.push_back(absl::InternalError("Parallax error."));
+    if (parallax < calibration_->GetRadiansPerPixel() * 10.f ||
+        parallax > calibration_->GetRadiansPerPixel() * 20.f) {
+      n_rigid_failed_parallax++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Parallax error.");
       continue;
     }
 
     // Check Reprojection error.
     Eigen::Vector3f landmark_position_1 =
-        (*previous_camera_transform_world) * (*landmark_position_status);
+        (*oldest_camera_transform_world) * (*landmark_position_status);
 
     if (landmark_position_1.z() < 0) {
-      rigid_triangulations.push_back(absl::InternalError("Parallax error."));
+      n_rigid_failed_negative_depth++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Parallax error.");
       continue;
     }
 
     cv::Point2f projected_landmark_1 =
         calibration_->Project(landmark_position_1);
 
-    if (SquaredReprojectionError(previous_keypoint.pt, projected_landmark_1) >
+    if (SquaredReprojectionError(oldest_keypoint.pt, projected_landmark_1) >
         5.991) {
-      rigid_triangulations.push_back(absl::InternalError("Parallax error."));
+      n_rigid_failed_reprojection++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Parallax error.");
       continue;
     }
 
     Eigen::Vector3f landmark_position_2 =
-        (*current_camera_transform_world) * (*landmark_position_status);
+        (*newest_camera_transform_world) * (*landmark_position_status);
 
     if (landmark_position_2.z() < 0) {
-      rigid_triangulations.push_back(absl::InternalError("Parallax error."));
+      n_rigid_failed_negative_depth++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Parallax error.");
       continue;
     }
 
     cv::Point2f projected_landmark_2 =
-        calibration_->Project(landmark_position_1);
+        calibration_->Project(landmark_position_2);
 
-    if (SquaredReprojectionError(current_keypoint.pt, projected_landmark_2) >
+    if (SquaredReprojectionError(newest_keypoint.pt, projected_landmark_2) >
         5.991) {
-      rigid_triangulations.push_back(absl::InternalError("Parallax error."));
+      n_rigid_failed_reprojection++;
+      rigid_triangulations[candidate_id] =
+          absl::InternalError("Parallax error.");
       continue;
     }
 
-    rigid_triangulations.push_back(landmark_position_status);
+    rigid_triangulations[candidate_id] = landmark_position_status;
     if (landmark_position_status.ok()) {
       n_rigid_triangulations++;
     }
   }
 
-  for (int idx = 0; idx < triangulation_candidate_ids.size(); idx++) {
-    auto candidate_id = triangulation_candidate_ids[idx];
+  for (auto candidate_id : triangulation_candidate_ids) {
     Eigen::Vector3f landmark_triangulated;
     if (n_rigid_triangulations > 1.5 * n_deformable_triangulations) {
-      if (!rigid_triangulations[idx].ok()) {
+      n_selected_rigid++;
+      if (!rigid_triangulations.contains(candidate_id) ||
+          !rigid_triangulations.at(candidate_id).ok()) {
+        n_selected_invalid_status++;
         continue;
       } else {
-        landmark_triangulated = *(rigid_triangulations[idx]);
+        landmark_triangulated = *(rigid_triangulations.at(candidate_id));
       }
     } else if (n_deformable_triangulations >= 1.5 * n_rigid_triangulations) {
-      if (!deformable_triangulations[idx].ok()) {
+      n_selected_deformable++;
+      if (!deformable_triangulations.contains(candidate_id) ||
+          !deformable_triangulations.at(candidate_id).ok()) {
+        n_selected_invalid_status++;
         continue;
       } else {
-        landmark_triangulated = *deformable_triangulations[idx];
+        landmark_triangulated = *(deformable_triangulations.at(candidate_id));
       }
     } else {
+      n_selection_tie++;
       continue;
     }
 
@@ -235,12 +290,20 @@ void Mapping::LandmarkTriangulation() {
         current_frame_id, candidate_id);
 
     if (landmark_triangulated.hasNaN()) {
-      LOG(INFO) << landmark_triangulated.transpose();
+      n_failed_nan++;
       continue;
     }
 
     if (!index_in_frame.ok()) {
-      LOG(INFO) << index_in_frame.status().message();
+      n_failed_index++;
+      continue;
+    }
+
+    const LandmarkStatus current_status =
+        current_frame->LandmarkStatuses()[*index_in_frame];
+    if (current_status == TRACKED_WITH_3D ||
+        current_status == JUST_TRIANGULATED) {
+      n_selected_invalid_status++;
       continue;
     }
 
@@ -283,6 +346,27 @@ void Mapping::LandmarkTriangulation() {
                                               relative_position);
     }
   }
+
+  const auto t1 = std::chrono::steady_clock::now();
+  LOG(INFO)
+      << "[TRIANG_METRICS] frame=" << current_frame->GetId()
+      << " candidates=" << n_candidates
+      << " rigid_ok=" << n_rigid_triangulations
+      << " deform_ok=" << n_deformable_triangulations
+      << " selected_rigid=" << n_selected_rigid
+      << " selected_deform=" << n_selected_deformable
+      << " selection_tie=" << n_selection_tie
+      << " selected_invalid=" << n_selected_invalid_status
+      << " rejected_close=" << n_rejected_close_features
+      << " rejected_short_track=" << n_rejected_short_track
+      << " rigid_fail_rigidity=" << n_rigid_failed_rigidity
+      << " rigid_fail_triangulation=" << n_rigid_failed_triangulation
+      << " rigid_fail_parallax=" << n_rigid_failed_parallax
+      << " rigid_fail_depth=" << n_rigid_failed_negative_depth
+      << " rigid_fail_reprojection=" << n_rigid_failed_reprojection
+      << " fail_nan=" << n_failed_nan << " fail_index=" << n_failed_index
+      << " triangulated=" << triangulated_landmarks << " ms_total="
+      << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
 }
 
 absl::StatusOr<Eigen::Vector3f> Mapping::DeformableLandmarkTriangulation(

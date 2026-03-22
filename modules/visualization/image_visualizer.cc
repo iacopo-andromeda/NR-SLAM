@@ -143,25 +143,25 @@ void ImageVisualizer::DrawRegularizationGraph(
 void ImageVisualizer::DrawOpticalFlow(TemporalBuffer& temporal_buffer) {
   cv::Mat image_to_display = current_processed_image_.clone();
 
-  auto buffer = temporal_buffer.GetRawBuffer();
+  const auto& buffer = temporal_buffer.GetRawBuffer();
 
-  TemporalBuffer::Snapshot last_snapshot = buffer.rbegin()->second;
+  const TemporalBuffer::Snapshot& last_snapshot = buffer.rbegin()->second;
 
-  for (const auto& [track_id, keypoint] : last_snapshot.keypoint_tracks) {
-    cv::Point2f last_pixel_coordinates = keypoint.pt;
-    LandmarkStatus status = last_snapshot.keypoint_tracks_status[track_id];
+  for (const auto& [track_id, track] : last_snapshot.tracks) {
+    cv::Point2f last_pixel_coordinates = track.keypoint.pt;
+    LandmarkStatus status = track.status;
     cv::Scalar color =
         (status == TRACKED) ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0);
 
     for (auto it = next(buffer.rbegin(), 1); it != buffer.rend(); it++) {
-      TemporalBuffer::Snapshot snapshot = it->second;
+      const TemporalBuffer::Snapshot& snapshot = it->second;
 
-      if (snapshot.keypoint_tracks.contains(track_id)) {
+      if (snapshot.tracks.contains(track_id)) {
         // Draw optical flow segment
         cv::line(image_to_display, last_pixel_coordinates,
-                 snapshot.keypoint_tracks[track_id].pt, color, 1);
+                 snapshot.tracks.at(track_id).keypoint.pt, color, 1);
 
-        last_pixel_coordinates = snapshot.keypoint_tracks[track_id].pt;
+        last_pixel_coordinates = snapshot.tracks.at(track_id).keypoint.pt;
       }
     }
   }

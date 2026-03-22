@@ -20,7 +20,12 @@
 
 #include "temporal_buffer.h"
 
+#include <algorithm>
+#include <functional>
+
+#include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/strings/str_cat.h"
 
 using namespace std;
 
@@ -30,20 +35,23 @@ TemporalBuffer::TemporalBuffer(TemporalBuffer::Options& options)
 void TemporalBuffer::InsertSnapshotFromFrame(Frame& frame) {
   Snapshot snapshot;
 
-  auto keypoints = frame.GetKeypointsWithStatus({TRACKED_WITH_3D, TRACKED});
-  auto landmark_positions_ =
-      frame.GetLandmarkPositionsWithStatus({TRACKED_WITH_3D, TRACKED});
-  auto statuses =
-      frame.GetLandmarkStatusesWithStatus({TRACKED_WITH_3D, TRACKED});
-  auto indexes = frame.GetIndexWithStatus({TRACKED_WITH_3D, TRACKED});
+  auto& keypoints = frame.Keypoints();
+  auto& landmark_positions = frame.LandmarkPositions();
+  auto& statuses = frame.LandmarkStatuses();
+
+  CHECK_EQ(keypoints.size(), landmark_positions.size());
+  CHECK_EQ(keypoints.size(), statuses.size());
 
   for (int idx = 0; idx < keypoints.size(); idx++) {
-    int keypoint_id = keypoints[idx].class_id;
+    if (statuses[idx] != TRACKED_WITH_3D && statuses[idx] != TRACKED) {
+      continue;
+    }
 
-    snapshot.keypoint_tracks[keypoint_id] = keypoints[idx];
-    snapshot.keypoint_tracks_status[keypoint_id] = statuses[idx];
-    snapshot.mapppoint_tracks_[keypoint_id] = landmark_positions_[idx];
-    snapshot.keypoint_id_to_frame_idx[keypoint_id] = indexes[idx];
+    const int keypoint_id = frame.GetTrackIdForIndex(idx);
+    DCHECK_GE(keypoint_id, 0);
+
+    snapshot.tracks[keypoint_id] = TrackRecord{keypoints[idx], statuses[idx],
+                                               landmark_positions[idx], idx};
   }
 
   snapshot.camera_transform_world = frame.CameraTransformationWorld();
@@ -57,6 +65,11 @@ void TemporalBuffer::InsertSnapshotFromFrame(Frame& frame) {
   }
 
   buffer_[frame.GetId()] = snapshot;
+
+  PruneTrackHistoryByAge(options_.max_track_lookback_frames);
+
+  const int stale_age_frames = std::max(3, options_.max_buffer_size / 2);
+  PruneStaleTracks(stale_age_frames);
 }
 
 absl::btree_map<ID, TemporalBuffer::Snapshot>& TemporalBuffer::GetRawBuffer() {
@@ -64,13 +77,12 @@ absl::btree_map<ID, TemporalBuffer::Snapshot>& TemporalBuffer::GetRawBuffer() {
 }
 
 std::vector<int> TemporalBuffer::GetTriangulationCandidatesIds() {
-  TemporalBuffer::Snapshot last_snapshot = buffer_.rbegin()->second;
+  const TemporalBuffer::Snapshot& last_snapshot = buffer_.rbegin()->second;
 
   vector<int> candidate_ids;
 
-  for (const auto [keypoint_id, status] :
-       last_snapshot.keypoint_tracks_status) {
-    if (status == TRACKED) {
+  for (const auto& [keypoint_id, track] : last_snapshot.tracks) {
+    if (track.status == TRACKED) {
       candidate_ids.push_back(keypoint_id);
     }
   }
@@ -81,7 +93,7 @@ std::vector<int> TemporalBuffer::GetTriangulationCandidatesIds() {
 int TemporalBuffer::TrackLenght(const int keypoint_id) {
   int track_lenght = 0;
   for (const auto& [frame_id, snapshot] : buffer_) {
-    if (snapshot.keypoint_tracks.contains(keypoint_id)) {
+    if (snapshot.tracks.contains(keypoint_id)) {
       track_lenght++;
     }
   }
@@ -102,24 +114,33 @@ std::vector<Sophus::SE3f> TemporalBuffer::GetLatestCameraPoses() {
 std::vector<int> TemporalBuffer::GetClosestMapPointsToFeature(
     const int keypoint_id, const int num_neighbors,
     const int min_image_distance, const int max_image_distance) {
-  TemporalBuffer::Snapshot& last_snapshot = buffer_.rbegin()->second;
+  const TemporalBuffer::Snapshot& last_snapshot = buffer_.rbegin()->second;
 
-  cv::KeyPoint keypoint = last_snapshot.keypoint_tracks[keypoint_id];
+  if (num_neighbors <= 0) {
+    return std::vector<int>();
+  }
+
+  auto keypoint_it = last_snapshot.tracks.find(keypoint_id);
+  if (keypoint_it == last_snapshot.tracks.end()) {
+    return std::vector<int>();
+  }
+
+  const cv::KeyPoint& keypoint = keypoint_it->second.keypoint;
 
   vector<pair<float, int>> distances;
-  for (const auto [neighbor_keypoint_id, neighbor_keypoint] :
-       last_snapshot.keypoint_tracks) {
+  distances.reserve(last_snapshot.tracks.size());
+  for (const auto& [neighbor_keypoint_id, neighbor_track] :
+       last_snapshot.tracks) {
     if (neighbor_keypoint_id == keypoint_id) {
       continue;
     }
 
-    if (last_snapshot.keypoint_tracks_status[neighbor_keypoint_id] !=
-        TRACKED_WITH_3D) {
+    if (neighbor_track.status != TRACKED_WITH_3D) {
       continue;
     }
 
     // Compute distance between KeyPoints
-    float distance = cv::norm(keypoint.pt - neighbor_keypoint.pt);
+    float distance = cv::norm(keypoint.pt - neighbor_track.keypoint.pt);
 
     if (distance > max_image_distance) {
       continue;
@@ -137,12 +158,11 @@ std::vector<int> TemporalBuffer::GetClosestMapPointsToFeature(
 
   // Recover the K closest points
   vector<int> closest_mappoint_ids_;
-  for (const auto [distance, keypoint_id] : distances) {
-    if (closest_mappoint_ids_.size() > num_neighbors) {
-      break;
-    }
-
-    closest_mappoint_ids_.push_back(keypoint_id);
+  const size_t max_neighbors =
+      std::min(distances.size(), static_cast<size_t>(num_neighbors));
+  closest_mappoint_ids_.reserve(max_neighbors);
+  for (size_t idx = 0; idx < max_neighbors; ++idx) {
+    closest_mappoint_ids_.push_back(distances[idx].second);
   }
 
   return closest_mappoint_ids_;
@@ -151,23 +171,27 @@ std::vector<int> TemporalBuffer::GetClosestMapPointsToFeature(
 vector<pair<float, int>> TemporalBuffer::GetClosestMapPointsToLocation(
     const Eigen::Vector3f location, const int keypoint_id,
     const int num_neighbors) {
-  TemporalBuffer::Snapshot& last_snapshot = buffer_.rbegin()->second;
+  const TemporalBuffer::Snapshot& last_snapshot = buffer_.rbegin()->second;
+
+  if (num_neighbors <= 0) {
+    return {};
+  }
 
   vector<pair<float, int>> distances;
+  distances.reserve(last_snapshot.tracks.size());
 
-  for (const auto [neighbor_keypoint_id, neighbor_landmark] :
-       last_snapshot.mapppoint_tracks_) {
+  for (const auto& [neighbor_keypoint_id, neighbor_track] :
+       last_snapshot.tracks) {
     if (neighbor_keypoint_id == keypoint_id) {
       continue;
     }
 
-    if (last_snapshot.keypoint_tracks_status[neighbor_keypoint_id] !=
-        TRACKED_WITH_3D) {
+    if (neighbor_track.status != TRACKED_WITH_3D) {
       continue;
     }
 
     // Compute distance between KeyPoints
-    float distance = (neighbor_landmark - location).norm();
+    float distance = (neighbor_track.landmark_position - location).norm();
 
     distances.push_back(make_pair(distance, neighbor_keypoint_id));
   }
@@ -175,8 +199,10 @@ vector<pair<float, int>> TemporalBuffer::GetClosestMapPointsToLocation(
   // Sort neighbors by distance
   sort(distances.begin(), distances.end());
 
+  const size_t max_neighbors =
+      std::min(distances.size(), static_cast<size_t>(num_neighbors));
   return vector<pair<float, int>>(distances.begin(),
-                                  distances.begin() + num_neighbors);
+                                  distances.begin() + max_neighbors);
 }
 
 std::vector<std::pair<ID, cv::KeyPoint>> TemporalBuffer::GetFeatureTrack(
@@ -184,48 +210,126 @@ std::vector<std::pair<ID, cv::KeyPoint>> TemporalBuffer::GetFeatureTrack(
   vector<pair<ID, cv::KeyPoint>> keypoint_track;
 
   for (const auto& [frame_id, snapshot] : buffer_) {
-    if (snapshot.keypoint_tracks.contains(keypoint_id)) {
-      keypoint_track.push_back(
-          make_pair(frame_id, snapshot.keypoint_tracks.at(keypoint_id)));
+    auto it = snapshot.tracks.find(keypoint_id);
+    if (it != snapshot.tracks.end()) {
+      keypoint_track.push_back(make_pair(frame_id, it->second.keypoint));
     }
   }
 
   return keypoint_track;
 }
 
-absl::StatusOr<Sophus::SE3f> TemporalBuffer::GetCameraTransformWorld(
-    const int frame_id) {
-  if (!buffer_.contains(frame_id)) {
-    return absl::InternalError("Frame Id not found in the buffer");
+int TemporalBuffer::PruneStaleTracks(const int max_stale_frames) {
+  if (buffer_.empty()) {
+    return 0;
   }
 
-  return buffer_[frame_id].camera_transform_world;
+  const int latest_frame_id = buffer_.rbegin()->first;
+
+  absl::flat_hash_map<int, int> keypoint_last_seen_frame;
+  for (const auto& [frame_id, snapshot] : buffer_) {
+    for (const auto& [keypoint_id, track] : snapshot.tracks) {
+      keypoint_last_seen_frame[keypoint_id] = frame_id;
+    }
+  }
+
+  absl::flat_hash_set<int> stale_keypoint_ids;
+  for (const auto& [keypoint_id, last_seen_frame] : keypoint_last_seen_frame) {
+    if (latest_frame_id - last_seen_frame > max_stale_frames) {
+      stale_keypoint_ids.insert(keypoint_id);
+    }
+  }
+
+  if (stale_keypoint_ids.empty()) {
+    return 0;
+  }
+
+  int removed_entries = 0;
+  for (auto& [frame_id, snapshot] : buffer_) {
+    for (const int keypoint_id : stale_keypoint_ids) {
+      removed_entries += snapshot.tracks.erase(keypoint_id);
+    }
+  }
+
+  return removed_entries;
+}
+
+int TemporalBuffer::PruneTrackHistoryByAge(
+    const int max_track_lookback_frames) {
+  if (buffer_.empty()) {
+    return 0;
+  }
+
+  if (max_track_lookback_frames < 1) {
+    return 0;
+  }
+
+  const int latest_frame_id = buffer_.rbegin()->first;
+
+  int removed_entries = 0;
+  for (auto& [frame_id, snapshot] : buffer_) {
+    std::vector<int> keypoints_to_remove;
+    keypoints_to_remove.reserve(snapshot.tracks.size());
+
+    for (const auto& [keypoint_id, track] : snapshot.tracks) {
+      if (latest_frame_id - frame_id > max_track_lookback_frames) {
+        keypoints_to_remove.push_back(keypoint_id);
+      }
+    }
+
+    for (const int keypoint_id : keypoints_to_remove) {
+      removed_entries += snapshot.tracks.erase(keypoint_id);
+    }
+  }
+
+  return removed_entries;
+}
+
+absl::StatusOr<std::reference_wrapper<const TemporalBuffer::Snapshot>>
+TemporalBuffer::GetSnapshot(const int frame_id) const {
+  auto it = buffer_.find(frame_id);
+  if (it == buffer_.end()) {
+    return absl::NotFoundError(
+        absl::StrCat("Frame Id ", frame_id, " not found in the buffer"));
+  }
+  return std::cref(it->second);
+}
+
+absl::StatusOr<Sophus::SE3f> TemporalBuffer::GetCameraTransformWorld(
+    const int frame_id) {
+  auto snapshot_or = GetSnapshot(frame_id);
+  if (!snapshot_or.ok()) return snapshot_or.status();
+  return snapshot_or->get().camera_transform_world;
 }
 
 absl::StatusOr<Eigen::Vector3f> TemporalBuffer::GetLandmarkPosition(
     const int frame_id, const int keypoint_id) {
-  if (!buffer_.contains(frame_id)) {
-    return absl::InternalError("Frame Id not found in the buffer");
+  auto snapshot_or = GetSnapshot(frame_id);
+  if (!snapshot_or.ok()) return snapshot_or.status();
+
+  const Snapshot& snapshot = snapshot_or->get();
+  auto track_it = snapshot.tracks.find(keypoint_id);
+  if (track_it == snapshot.tracks.end()) {
+    return absl::NotFoundError(
+        absl::StrCat("KeyPoint Id ", keypoint_id, " not found in snapshot"));
   }
 
-  if (!buffer_[frame_id].mapppoint_tracks_.contains(keypoint_id)) {
-    return absl::InternalError("KeyPoint Id not found in the snapshot");
-  }
-
-  return buffer_[frame_id].mapppoint_tracks_[keypoint_id];
+  return track_it->second.landmark_position;
 }
 
 absl::StatusOr<int> TemporalBuffer::GetLandmarkIndexInFrame(
     const int frame_id, const int keypoint_id) {
-  if (!buffer_.contains(frame_id)) {
-    return absl::InternalError("Frame Id not found in the buffer");
+  auto snapshot_or = GetSnapshot(frame_id);
+  if (!snapshot_or.ok()) return snapshot_or.status();
+
+  const Snapshot& snapshot = snapshot_or->get();
+  auto track_it = snapshot.tracks.find(keypoint_id);
+  if (track_it == snapshot.tracks.end()) {
+    return absl::NotFoundError(
+        absl::StrCat("KeyPoint Id ", keypoint_id, " not found in snapshot"));
   }
 
-  if (!buffer_[frame_id].mapppoint_tracks_.contains(keypoint_id)) {
-    return absl::InternalError("KeyPoint Id not found in the snapshot");
-  }
-
-  return buffer_[frame_id].keypoint_id_to_frame_idx[keypoint_id];
+  return track_it->second.frame_index;
 }
 
 bool TemporalBuffer::CheckRigidity(const int first_frame_id,
@@ -233,10 +337,33 @@ bool TemporalBuffer::CheckRigidity(const int first_frame_id,
                                    const float rigidity_th) {
   bool to_return = true;
   for (int frame_id = first_frame_id; frame_id <= last_frame_id; frame_id++) {
-    if (buffer_[frame_id].deformation_magnitud > rigidity_th) {
+    auto it = buffer_.find(frame_id);
+    if (it == buffer_.end()) {
+      continue;
+    }
+
+    if (it->second.deformation_magnitud > rigidity_th) {
       to_return = false;
     }
   }
 
   return to_return;
+}
+
+absl::Status TemporalBuffer::Validate() const {
+  for (const auto& [frame_id, snapshot] : buffer_) {
+    if (snapshot.frame_id != static_cast<int>(frame_id)) {
+      return absl::InternalError(
+          absl::StrCat("Snapshot frame_id ", snapshot.frame_id,
+                       " does not match buffer key ", frame_id));
+    }
+    for (const auto& [keypoint_id, track] : snapshot.tracks) {
+      if (track.frame_index < 0) {
+        return absl::InternalError(absl::StrCat(
+            "Track for keypoint ", keypoint_id, " in frame ", frame_id,
+            " has invalid frame_index ", track.frame_index));
+      }
+    }
+  }
+  return absl::OkStatus();
 }

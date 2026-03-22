@@ -24,14 +24,28 @@
 #include <opencv2/opencv.hpp>
 
 #include "calibration/camera_model.h"
+#include "calibration/camera_parameters.h"
 
 class KannalaBrandt8 : public CameraModel {
- public:
-  KannalaBrandt8() : precision_(1e-6) { calibration_parameters_.resize(8); }
+ private:
+  KannalaBrandt8Parameters params_;
+  const float precision_ = 1e-6;
 
-  KannalaBrandt8(const std::vector<float>& calibration_parameters)
-      : CameraModel(calibration_parameters), precision_(1e-6) {
-    assert(calibration_parameters_.size() == 8);
+  // Deleted: force validation through constructor
+  KannalaBrandt8() = delete;
+
+ public:
+  // Construct with typed parameters
+  explicit KannalaBrandt8(const KannalaBrandt8Parameters& params)
+      : params_(params) {
+    // Update base class for backward compatibility
+    calibration_parameters_ = params_.ToVector();
+  }
+
+  // Allow construction from vector (validates)
+  explicit KannalaBrandt8(const std::vector<float>& calibration_parameters)
+      : params_(KannalaBrandt8Parameters::FromVector(calibration_parameters)) {
+    calibration_parameters_ = params_.ToVector();
   }
 
   void Project(const Eigen::Vector3f& landmark_position,
@@ -50,11 +64,8 @@ class KannalaBrandt8 : public CameraModel {
 
   Eigen::Matrix3f ToIntrinsicsMatrix() const override;
 
- private:
-  const float precision_;
-
-  // Parameter vector corresponds to:
-  // [fx, fy, cx, cy, k0, k1, k2, k3]
+  // Access to parameters (for testing/debugging)
+  const KannalaBrandt8Parameters& GetParameters() const { return params_; }
 };
 
 #endif  // NRSLAM_KANNALA_BRANDT_8_H

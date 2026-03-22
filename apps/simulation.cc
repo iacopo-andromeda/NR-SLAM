@@ -60,10 +60,10 @@ int main(int argc, char** argv) {
 
   for (int idx = starting_frame; idx < end_frame; idx++) {
     LOG(INFO) << "Processing image " << idx;
-    auto image = dataset.GetImage(idx);
+    auto image = dataset.GetImage(ImageIndex{idx});
     CHECK_OK(image);
 
-    auto depth_image = dataset.GetDepthImage(idx);
+    auto depth_image = dataset.GetDepthImage(ImageIndex{idx});
     CHECK_OK(depth_image);
 
     cv::Size new_size((*image).cols / 2.0f, (*image).rows / 2.0f);

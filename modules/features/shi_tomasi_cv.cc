@@ -41,10 +41,6 @@ void ShiTomasiCV::Extract(const cv::Mat& im, const cv::Mat& mask,
   // cv::waitKey(0);
   // cv::destroyAllWindows();
 
-  std::string image_file_path =
-      "/tmp/debug/shi_tomasi_debug_" + to_string(n_seen_++) + ".png";
-  cv::imwrite(image_file_path, im);
-
   cv::goodFeaturesToTrack(im, corners, options_.maxCorners,
                           options_.qualityLevel, options_.minDistance, mask,
                           options_.blockSize, options_.useHarrisDetector,
@@ -62,7 +58,13 @@ void ShiTomasiCV::Extract(const cv::Mat& im, const cv::Mat& mask,
       keypoints.emplace_back(c, 1.0, -1, 0, 0, next_feature_id_++);
     }
   }
+}
 
-  LOG(INFO) << "Previously extracted keypoints: " << unique_corners.size()
-            << ", new keypoints: " << keypoints.size();
+void ShiTomasiCV::AugmentMask(const cv::Mat& mask,
+                              const std::vector<cv::KeyPoint>& keypoints,
+                              cv::Mat& augmented_mask) {
+  augmented_mask = mask.clone();
+  for (const auto& kp : keypoints) {
+    cv::circle(augmented_mask, kp.pt, options_.minDistance, cv::Scalar(0), -1);
+  }
 }

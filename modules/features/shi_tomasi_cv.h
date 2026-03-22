@@ -48,6 +48,10 @@ class ShiTomasiCV : public Feature {
   void Extract(const cv::Mat& im, const cv::Mat& mask,
                std::vector<cv::KeyPoint>& vKeys) override;
 
+  void AugmentMask(const cv::Mat& mask,
+                   const std::vector<cv::KeyPoint>& keypoints,
+                   cv::Mat& augmented_mask) override;
+
  private:
   Options options_;
   int n_seen_ = 0;
