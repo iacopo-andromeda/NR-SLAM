@@ -20,9 +20,42 @@
 
 #include "image_visualizer.h"
 
+#include <filesystem>
+
 #include "absl/log/log.h"
 
 using namespace std;
+
+namespace {
+
+bool SaveImageToDisk(const std::string& image_file_path, const cv::Mat& image,
+                     const std::string& image_type_for_logs) {
+  const std::filesystem::path target_path(image_file_path);
+  const std::filesystem::path parent_path = target_path.parent_path();
+
+  if (!parent_path.empty()) {
+    std::error_code error;
+    std::filesystem::create_directories(parent_path, error);
+    if (error) {
+      LOG(ERROR) << "Could not create directory '" << parent_path.string()
+                 << "' for " << image_type_for_logs << ": "
+                 << error.message();
+      return false;
+    }
+  }
+
+  if (!cv::imwrite(image_file_path, image)) {
+    LOG(ERROR) << "Failed to save " << image_type_for_logs
+               << " to disk at: " << image_file_path;
+    return false;
+  }
+
+  LOG(INFO) << "Saved " << image_type_for_logs
+            << " to disk at: " << image_file_path;
+  return true;
+}
+
+}  // namespace
 
 ImageVisualizer::ImageVisualizer(Options& options)
     : options_(options), current_image_number_(0) {}
@@ -58,8 +91,7 @@ void ImageVisualizer::DrawCurrentFrame(Frame& frame,
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "current_frame/" +
                              to_string(frame.GetId()) + ".png";
-    LOG(INFO) << "Saved current frame to disk at: " << image_file_path;
-    cv::imwrite(image_file_path, image_to_display);
+    SaveImageToDisk(image_file_path, image_to_display, "current frame");
   }
 }
 
@@ -136,7 +168,8 @@ void ImageVisualizer::DrawRegularizationGraph(
     string image_file_path = options_.image_save_path +
                              "regularization_graph/" +
                              to_string(frame.GetId()) + ".png";
-    cv::imwrite(image_file_path, image_to_display);
+    SaveImageToDisk(image_file_path, image_to_display,
+                    "regularization graph");
   }
 }
 
@@ -175,7 +208,7 @@ void ImageVisualizer::DrawOpticalFlow(TemporalBuffer& temporal_buffer) {
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "optical_flow/" +
                              to_string(buffer.rbegin()->first) + ".png";
-    cv::imwrite(image_file_path, image_to_display);
+    SaveImageToDisk(image_file_path, image_to_display, "optical flow");
   }
 }
 
@@ -223,8 +256,8 @@ void ImageVisualizer::DrawClusteredOpticalFlow(
     string image_file_path = options_.image_save_path +
                              "clustered_optical_flow/" +
                              to_string(current_image_number_) + ".png";
-    LOG(INFO) << "Saved clustered optical flow to disk at: " << image_file_path;
-    cv::imwrite(image_file_path, image_to_display);
+    SaveImageToDisk(image_file_path, image_to_display,
+                    "clustered optical flow");
   }
 }
 
@@ -247,8 +280,7 @@ void ImageVisualizer::DrawFeatures(std::vector<cv::KeyPoint>& keypoints,
   if (!options_.image_save_path.empty()) {
     string image_file_path = options_.image_save_path + "current_features/" +
                              to_string(current_image_number_) + ".png";
-    LOG(INFO) << "Saved current features to disk at: " << image_file_path;
-    cv::imwrite(image_file_path, image_to_display);
+    SaveImageToDisk(image_file_path, image_to_display, "current features");
   }
 }
 

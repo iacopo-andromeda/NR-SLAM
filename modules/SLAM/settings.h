@@ -84,6 +84,17 @@ class Settings {
   int GetLostRecoveryGraceFrames();
   int GetLostRecoveryMinTrackedPoints();
 
+  // Monocular map initializer parameters
+  int GetMonocularInitKltWindowSize();
+  int GetMonocularInitKltMaxLevel();
+  int GetMonocularInitKltMaxIters();
+  float GetMonocularInitKltEpsilon();
+  float GetMonocularInitKltMinEigTh();
+  float GetMonocularInitKltMinSSIM();
+  int GetMonocularInitRigidMaxFeatures();
+  float GetMonocularInitRigidMinParallax();
+  float GetMonocularInitRigidEpipolarThreshold();
+
   // Feature extraction parameters
   int GetFeatureMaxCorners();
   float GetFeatureQualityLevel();
@@ -128,6 +139,18 @@ class Settings {
   int min_tracked_points_abort_ = 10;
   int lost_recovery_grace_frames_ = 5;
   int lost_recovery_min_tracked_points_ = 3;
+
+  // Monocular map initializer defaults (matching previous hardcoded values in
+  // tracking.cc)
+  int monocular_init_klt_window_size_ = 21;
+  int monocular_init_klt_max_level_ = 4;
+  int monocular_init_klt_max_iters_ = 10;
+  float monocular_init_klt_epsilon_ = 0.0001f;
+  float monocular_init_klt_min_eig_th_ = 0.0001f;
+  float monocular_init_klt_min_SSIM_ = 0.5f;
+  int monocular_init_rigid_max_features_ = 4000;
+  float monocular_init_rigid_min_parallax_ = 0.999f;
+  float monocular_init_rigid_epipolar_threshold_ = 0.005f;
 
   // Feature extraction defaults
   int feature_max_corners_ = 1000;

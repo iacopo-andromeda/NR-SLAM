@@ -42,7 +42,7 @@ DistortedPinHole::DistortedPinHole(const DistortedPinholeParameters& params)
   dist_coeffs_.at<double>(1, 0) = params_.k2;
   dist_coeffs_.at<double>(2, 0) = params_.p1;
   dist_coeffs_.at<double>(3, 0) = params_.p2;
-  dist_coeffs_.at<double>(4, 0) = 0.0;
+  dist_coeffs_.at<double>(4, 0) = params_.k3;
 }
 
 DistortedPinHole::DistortedPinHole(

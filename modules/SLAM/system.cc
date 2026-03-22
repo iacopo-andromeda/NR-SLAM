@@ -52,14 +52,6 @@ System::System(const string settings_file_path) {
   map_options.min_mappoint_distance = settings_->GetMinMapPointDistance();
   map_ = make_shared<Map>(map_options);
 
-  // StereoLucasKanade::Options stereo_matcher_options;
-  // stereo_matcher_options.klt_window_size = 21;
-  // stereo_matcher_options.klt_max_level = 4;
-  // stereo_matcher_options.klt_max_iters = 10;
-  // stereo_matcher_options.klt_epsilon = 0.0001;
-  // stereo_matcher_options.klt_min_eig_th = 0.0001;
-  // stereo_matcher_options.klt_min_SSIM = 0.5;
-
   stereo_pattern_matcher_ = make_shared<StereoPatternMatching>(
       settings_->getCalibration(), settings_->getBf());
 
@@ -102,6 +94,24 @@ System::System(const string settings_file_path) {
       settings_->GetLostRecoveryGraceFrames();
   tracking_options.lost_recovery_min_tracked_points =
       settings_->GetLostRecoveryMinTrackedPoints();
+  tracking_options.monocular_init_klt_window_size =
+      settings_->GetMonocularInitKltWindowSize();
+  tracking_options.monocular_init_klt_max_level =
+      settings_->GetMonocularInitKltMaxLevel();
+  tracking_options.monocular_init_klt_max_iters =
+      settings_->GetMonocularInitKltMaxIters();
+  tracking_options.monocular_init_klt_epsilon =
+      settings_->GetMonocularInitKltEpsilon();
+  tracking_options.monocular_init_klt_min_eig_th =
+      settings_->GetMonocularInitKltMinEigTh();
+  tracking_options.monocular_init_klt_min_SSIM =
+      settings_->GetMonocularInitKltMinSSIM();
+  tracking_options.monocular_init_rigid_max_features =
+      settings_->GetMonocularInitRigidMaxFeatures();
+  tracking_options.monocular_init_rigid_min_parallax =
+      settings_->GetMonocularInitRigidMinParallax();
+  tracking_options.monocular_init_rigid_epipolar_threshold =
+      settings_->GetMonocularInitRigidEpipolarThreshold();
   tracking_options.feature_max_corners = settings_->GetFeatureMaxCorners();
   tracking_options.feature_quality_level = settings_->GetFeatureQualityLevel();
   tracking_options.feature_min_distance = settings_->GetFeatureMinDistance();
@@ -234,67 +244,6 @@ void System::TrackImage(const cv::Mat& im) {
 
   perf_logger_->LogFrame(stats);
 }
-
-// void System::TrackImageWithStereo(const cv::Mat& im_left,
-//                                   const cv::Mat& im_right) {
-//   // Preprocess images.
-//   cv::Mat im_gray_left, im_gray_right;
-//   cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
-//   cv::Mat processed_image_right = ImageProcessing(im_right, im_gray_right);
-
-//   // Insert image in the image visualizer.
-//   image_visualizer_->SetCurrentImage(im_left, processed_image_left);
-
-//   // Generate image mask.
-//   auto masks = masker_->GetAllMasks(im_gray_left);
-
-//   // Perform tracking.
-//   tracker_->TrackImage(im_gray_left, masks, im_gray_right,
-//                        processed_image_left);
-
-//   // Perform mapping.
-//   mapper_->DoMapping();
-
-//   // Evaluate reconstruction.
-//   if (false && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
-//     frame_evaluator_->EvaluateFrameReconstruction(
-//         *(map_->GetMutableLastFrame()), im_gray_left, im_gray_right);
-//     frame_evaluator_->SaveResultsToFile();
-//   }
-
-//   // Draw images.
-//   image_visualizer_->UpdateWindows();
-// }
-
-// void System::TrackImageWithDepth(const cv::Mat& im_left,
-//                                  const cv::Mat& im_depth) {
-//   // Preprocess images.
-//   cv::Mat im_gray_left, im_gray_right;
-//   cv::Mat processed_image_left = ImageProcessing(im_left, im_gray_left);
-
-//   // Insert image in the image visualizer.
-//   image_visualizer_->SetCurrentImage(im_left, processed_image_left);
-
-//   // Generate image mask.
-//   auto masks = masker_->GetAllMasks(im_gray_left);
-
-//   // Perform tracking.
-//   tracker_->TrackImage(im_gray_left, masks, im_gray_right,
-//                        processed_image_left);
-
-//   // Perform mapping.
-//   mapper_->DoMapping();
-
-//   // Evaluate reconstruction.
-//   if (true && tracker_->GetTrackingStatus() == Tracking::TRACKING) {
-//     frame_evaluator_->EvaluateFrameReconstruction(
-//         *(map_->GetMutableLastFrame()), im_gray_left, im_depth);
-//     frame_evaluator_->SaveResultsToFile();
-//   }
-
-//   // Draw images.
-//   image_visualizer_->UpdateWindows();
-// }
 
 cv::Mat System::ImageProcessing(const cv::Mat& im, cv::Mat& im_gray) {
   cv::Mat processed_image;

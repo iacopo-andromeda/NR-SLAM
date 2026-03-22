@@ -40,7 +40,6 @@ class MonocularMapInitializer {
     float klt_min_SSIM = 0.7;
 
     int rigid_initializer_max_features;
-    int rigid_initializer_min_sample_set_size;
     float rigid_initializer_min_parallax;
     float rigid_initializer_epipolar_threshold;
   };

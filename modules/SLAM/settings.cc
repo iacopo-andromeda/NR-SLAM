@@ -125,9 +125,10 @@ Settings::Settings(const std::string& configFile) {
     float k2 = fSettings["Camera.k2"];
     float p1 = fSettings["Camera.p1"];
     float p2 = fSettings["Camera.p2"];
+    float k3 = fSettings["Camera.k3"];
 
     calibration_ = std::make_shared<DistortedPinHole>(
-        DistortedPinholeParameters{fx, fy, cx, cy, k1, k2, p1, p2});
+        DistortedPinholeParameters{fx, fy, cx, cy, k1, k2, p1, p2, k3});
   } else {
     LOG(ERROR) << "Error: " << cameraModel << " not known";
     exit(-1);
@@ -266,6 +267,24 @@ Settings::Settings(const std::string& configFile) {
                lost_recovery_grace_frames_);
   read_int_opt("Tracking.lost_recovery_min_tracked_points",
                lost_recovery_min_tracked_points_);
+  read_int_opt("Tracking.monocular_initializer.klt_window_size",
+               monocular_init_klt_window_size_);
+  read_int_opt("Tracking.monocular_initializer.klt_max_level",
+               monocular_init_klt_max_level_);
+  read_int_opt("Tracking.monocular_initializer.klt_max_iters",
+               monocular_init_klt_max_iters_);
+  read_float_nonneg("Tracking.monocular_initializer.klt_epsilon",
+                    monocular_init_klt_epsilon_);
+  read_float_nonneg("Tracking.monocular_initializer.klt_min_eig_th",
+                    monocular_init_klt_min_eig_th_);
+  read_float_nonneg("Tracking.monocular_initializer.klt_min_SSIM",
+                    monocular_init_klt_min_SSIM_);
+  read_int_opt("Tracking.monocular_initializer.rigid_max_features",
+               monocular_init_rigid_max_features_);
+  read_float_opt("Tracking.monocular_initializer.rigid_min_parallax",
+                 monocular_init_rigid_min_parallax_);
+  read_float_opt("Tracking.monocular_initializer.rigid_epipolar_threshold",
+                 monocular_init_rigid_epipolar_threshold_);
   read_int_opt("Features.max_corners", feature_max_corners_);
   read_float_opt("Features.quality_level", feature_quality_level_);
   read_float_opt("Features.min_distance", feature_min_distance_);
@@ -339,6 +358,33 @@ int Settings::GetLostRecoveryGraceFrames() {
 }
 int Settings::GetLostRecoveryMinTrackedPoints() {
   return lost_recovery_min_tracked_points_;
+}
+int Settings::GetMonocularInitKltWindowSize() {
+  return monocular_init_klt_window_size_;
+}
+int Settings::GetMonocularInitKltMaxLevel() {
+  return monocular_init_klt_max_level_;
+}
+int Settings::GetMonocularInitKltMaxIters() {
+  return monocular_init_klt_max_iters_;
+}
+float Settings::GetMonocularInitKltEpsilon() {
+  return monocular_init_klt_epsilon_;
+}
+float Settings::GetMonocularInitKltMinEigTh() {
+  return monocular_init_klt_min_eig_th_;
+}
+float Settings::GetMonocularInitKltMinSSIM() {
+  return monocular_init_klt_min_SSIM_;
+}
+int Settings::GetMonocularInitRigidMaxFeatures() {
+  return monocular_init_rigid_max_features_;
+}
+float Settings::GetMonocularInitRigidMinParallax() {
+  return monocular_init_rigid_min_parallax_;
+}
+float Settings::GetMonocularInitRigidEpipolarThreshold() {
+  return monocular_init_rigid_epipolar_threshold_;
 }
 int Settings::GetFeatureMaxCorners() { return feature_max_corners_; }
 float Settings::GetFeatureQualityLevel() { return feature_quality_level_; }

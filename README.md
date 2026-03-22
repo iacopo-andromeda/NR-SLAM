@@ -6,7 +6,9 @@
 NR-SLAM is a novel monocular deformable SLAM system founded on the combination of a **Dynamic Deformation Graph** with a **Visco-Elastic deformation model**.
 It is able to reconstruct medical imagery with surfaces with different types of topologies and deformations and can use **pinhole** and **fisheye** cameras.
 
-We provide examples to run NR-SLAM in the Hamlyn and in the Endomapper datasets. Videos of some example executions can be found [here](https://drive.google.com/file/d/12KNHVLE05uoO4x9eZ-qHlGtQ-JPZaAnD).
+We provide an example workflow to run NR-SLAM with the Andromeda rosbag dataset. Videos of some example executions can be found [here](https://drive.google.com/file/d/12KNHVLE05uoO4x9eZ-qHlGtQ-JPZaAnD).
+
+> For an up-to-date, code-first operational summary (including Andromeda workflow and theory-vs-code drift notes), see [AGENT_CONTEXT.md](AGENT_CONTEXT.md).
 
 <a href="https://youtu.be/N-N0ugRjR2s" target="_blank"><img src="https://youtu.be/N-N0ugRjR2s/0.jpg"
 alt="NR-SLAM" width="240" height="180" border="10" /></a>
@@ -71,38 +73,27 @@ chmod +x build.sh
 
 This will create **libNR-SLAM_d**  at *build/lib* folder and the executables in *build/bin* folder.
 
-# 4. Endomapper Examples
-[Endomapper dataset](https://www.synapse.org/#!Synapse:syn26707219/wiki/615178) is composed by a set of real and
-simulated colonoscopies from a monocular endoscope. we provide an example program to launch the sequence for
-this dataset, both the real and simulated videos.
+# 4. Andromeda Example
 
-1. Grab your Endomapper video from https://www.synapse.org/#!Synapse:syn26707219/wiki/615178
+Andromeda execution is driven by compressed ROS image messages from a rosbag and a secondary state topic.
 
-2. Execute the following command for a real colonoscopy sequence:
+1. Build the Andromeda target:
 ```
-./build/bin/endomapper --dataset_path <video_path> 
-                       --settings_path .data/endomapper/settings.yaml 
-                       --starting_frame <starting_frame> 
-                       --end_frame <last_frame>
+./build.sh --target andromeda
 ```
-
-3. Execute the following command for a simulated colonoscopy sequence:
-```
-./build/bin/simulation --dataset_path <dataset_folder> 
-                       --settings_path .data/simulation/settings.yaml 
-                       --starting_frame <starting_frame> 
-                       --end_frame <last_frame>
-```
-
-# 5. Hamlyn Examples
-[Hamlyn dataset](http://hamlyn.doc.ic.ac.uk/vision/) is a set of endoscopy sequences recorded with a monocular and stereo endoscope. 
-
-1. Download the dataset from the [webpage](http://hamlyn.doc.ic.ac.uk/vision/). (Disclaimer: unfortunately the web page is often down. Please contact the dataset authors to get the images).
 
 2. Execute the following command:
 ```
-./build/bin/hamlyn --dataset_path <video_path> 
-                       --settings_path .data/hamlyn_<i>/settings.yaml 
-                       --starting_frame <starting_frame> 
-                       --end_frame <last_frame>
+./build/bin/andromeda \
+        --dataset_path /home/galactus/Documents/robot-bags/rosbag2_13-02-2026_08-57-17 \
+        --settings_path ./data/andromeda/settings.yaml \
+        --starting_frame 1771001959417433296 \
+        --end_frame 1771002836540509598 \
+        --range_mode timestamp_ns \
+        --max_images 200 \
+        --log_file slam_run.log
 ```
+
+3. Relevant runtime topics in the rosbag:
+         - Main image topic: `/image_raw/compressed`
+         - Secondary state topic: `/robot/state`

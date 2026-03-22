@@ -53,19 +53,19 @@ struct PinholeParameters {
 };
 
 struct DistortedPinholeParameters {
-  float fx, fy, cx, cy, k1, k2, p1, p2;
+  float fx, fy, cx, cy, k1, k2, p1, p2, k3;
 
   std::vector<float> ToVector() const {
-    return {fx, fy, cx, cy, k1, k2, p1, p2};
+    return {fx, fy, cx, cy, k1, k2, p1, p2, k3};
   }
 
   static DistortedPinholeParameters FromVector(const std::vector<float>& v) {
-    if (v.size() != 8) {
+    if (v.size() != 9) {
       throw std::invalid_argument(
-          "DistortedPinholeParameters expects exactly 8 parameters, got " +
+          "DistortedPinholeParameters expects exactly 9 parameters, got " +
           std::to_string(v.size()));
     }
-    return {v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]};
+    return {v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8]};
   }
 
   std::string ToString() const {
@@ -73,7 +73,7 @@ struct DistortedPinholeParameters {
            ", fy=" + std::to_string(fy) + ", cx=" + std::to_string(cx) +
            ", cy=" + std::to_string(cy) + ", k1=" + std::to_string(k1) +
            ", k2=" + std::to_string(k2) + ", p1=" + std::to_string(p1) +
-           ", p2=" + std::to_string(p2) + ")";
+           ", p2=" + std::to_string(p2) + ", k3=" + std::to_string(k3) + ")";
   }
 };
 

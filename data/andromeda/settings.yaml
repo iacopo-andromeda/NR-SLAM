@@ -32,30 +32,17 @@ System.autoplay: 1
 # ---------------------------------------------------------------------------
 
 # Use every Nth frame only while in LOST bootstrap mode (1 disables skipping).
-Tracking.lost_bootstrap_frame_stride: 3
 
 # Keep at most this many frames of lookback per feature track for triangulation.
 Tracking.triangulation_track_lookback_frames: 5
-
-# Minimum 3D spacing between existing and newly added map points (world units).
 Tracking.min_mappoint_distance: 0.02
 
-# KLT optical-flow window half-size (pixels on each side, so 21 => 21x21 window).
+# KLT optical-flow
 Tracking.klt_window_size: 21
-
-# Number of image pyramid levels for KLT.
 Tracking.klt_max_level: 4
-
-# Maximum KLT iterations per pyramid level.
 Tracking.klt_max_iters: 10
-
-# KLT convergence epsilon (sub-pixel accuracy threshold).
 Tracking.klt_epsilon: 0.0001
-
-# KLT minimum eigenvalue threshold – tracked points below this are discarded.
 Tracking.klt_min_eig_th: 0.0001
-
-# Minimum SSIM score to accept a tracked point (0..1; higher = stricter).
 Tracking.klt_min_SSIM: 0.65
 
 # Insert a new keyframe after this many tracked frames.
@@ -65,13 +52,21 @@ Tracking.images_to_insert_keyframe: 5
 Tracking.stale_mappoint_max_age_frames: 30
 
 # Abort tracking (declare LOST) when fewer than this many points are tracked.
-Tracking.min_tracked_points_abort: 10
-
-# After re-detection, wait this many frames before declaring recovery successful.
+Tracking.min_tracked_points_abort: 8
+Tracking.lost_bootstrap_frame_stride: 3
 Tracking.lost_recovery_grace_frames: 5
+Tracking.lost_recovery_min_tracked_points: 8
 
-# Minimum tracked points required to exit grace period and resume normal tracking.
-Tracking.lost_recovery_min_tracked_points: 3
+# Monocular map initializer (used for startup and LOST-mode re-bootstrap)
+Tracking.monocular_initializer.klt_window_size: 21
+Tracking.monocular_initializer.klt_max_level: 4
+Tracking.monocular_initializer.klt_max_iters: 10
+Tracking.monocular_initializer.klt_epsilon: 0.0001
+Tracking.monocular_initializer.klt_min_eig_th: 0.0001
+Tracking.monocular_initializer.klt_min_SSIM: 0.5
+Tracking.monocular_initializer.rigid_max_features: 4000
+Tracking.monocular_initializer.rigid_min_parallax: 0.999
+Tracking.monocular_initializer.rigid_epipolar_threshold: 0.005
 
 # ---------------------------------------------------------------------------
 # Feature extraction parameters (Shi-Tomasi / goodFeaturesToTrack)

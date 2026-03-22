@@ -65,13 +65,7 @@ set(CALIBRATION_SOURCES
         )
 
 set(DATASETS_SOURCES
-        ${root}/datasets/endomapper.cc
-        ${root}/datasets/hamlyn.cc
-        ${root}/datasets/simulation.cc
         ${root}/datasets/andromeda.cc
-        ${root}/datasets/endomapper.h
-        ${root}/datasets/hamlyn.h
-        ${root}/datasets/simulation.h
         ${root}/datasets/andromeda.h
         )
 

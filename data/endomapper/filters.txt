@@ -1,2 +1,0 @@
-BrightFilter 225
-Predefined ./data/endomapper/endoscopy_borders.png

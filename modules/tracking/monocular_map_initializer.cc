@@ -42,8 +42,6 @@ MonocularMapInitializer::MonocularMapInitializer(
   EssentialMatrixInitialization::Options essential_matrix_initializer_options;
   essential_matrix_initializer_options.max_features =
       options_.rigid_initializer_max_features;
-  essential_matrix_initializer_options.min_sample_set_size =
-      options_.rigid_initializer_min_sample_set_size;
   essential_matrix_initializer_options.min_parallax =
       options_.rigid_initializer_min_parallax;
   essential_matrix_initializer_options.epipolar_threshold =

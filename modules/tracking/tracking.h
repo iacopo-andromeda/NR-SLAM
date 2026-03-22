@@ -51,6 +51,17 @@ class Tracking {
     int lost_recovery_grace_frames = 5;
     int lost_recovery_min_tracked_points = 3;
 
+    // Monocular re/bootstrap initializer
+    int monocular_init_klt_window_size = 21;
+    int monocular_init_klt_max_level = 4;
+    int monocular_init_klt_max_iters = 10;
+    float monocular_init_klt_epsilon = 0.0001f;
+    float monocular_init_klt_min_eig_th = 0.0001f;
+    float monocular_init_klt_min_SSIM = 0.5f;
+    int monocular_init_rigid_max_features = 4000;
+    float monocular_init_rigid_min_parallax = 0.999f;
+    float monocular_init_rigid_epipolar_threshold = 0.005f;
+
     // Shi-Tomasi feature extraction
     int feature_max_corners = 1000;
     float feature_quality_level = 0.1f;

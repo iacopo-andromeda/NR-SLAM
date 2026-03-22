@@ -93,7 +93,7 @@ absl::Status EssentialMatrixInitialization::Initialize(
 int EssentialMatrixInitialization::ComputeMaxTries(
     const float inlier_fraction, const float success_likelihood) {
   return log(1 - success_likelihood) /
-         log(1 - pow(inlier_fraction, options_.min_sample_set_size));
+         log(1 - pow(inlier_fraction, kRansacSampleSetSize));
 }
 
 void EssentialMatrixInitialization::UnprojectTrackedFeatures() {
@@ -136,7 +136,7 @@ Eigen::Matrix3f EssentialMatrixInitialization::FindEssentialWithRANSAC(
   srand(4);
 
   // Cluster data for random selection.
-  const int n_clusters = options_.min_sample_set_size;
+  const int n_clusters = kRansacSampleSetSize;
   const int n_attemps = 3;
   auto termination_criteria = cv::TermCriteria(cv::TermCriteria::EPS, 10, 1.0);
   vector<int> labels;

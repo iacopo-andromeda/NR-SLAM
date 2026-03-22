@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 find_package(OpenCV 4 REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_BINARY_DIR}
@@ -17,18 +18,6 @@ set(NR_SLAM_MODULE_LINK_GROUP
         -Wl,--end-group
         )
 
-set(PROGRAM_NAME hamlyn)
-add_executable(${PROGRAM_NAME} hamlyn.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status ${NR_SLAM_MODULE_LINK_GROUP})
-
-set(PROGRAM_NAME endomapper)
-add_executable(${PROGRAM_NAME} endomapper.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status ${NR_SLAM_MODULE_LINK_GROUP})
-
-set(PROGRAM_NAME simulation)
-add_executable(${PROGRAM_NAME} simulation.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status ${NR_SLAM_MODULE_LINK_GROUP})
-
 set(PROGRAM_NAME andromeda)
 add_executable(${PROGRAM_NAME} andromeda.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status absl::log_sink_registry ${NR_SLAM_MODULE_LINK_GROUP})
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status absl::log_sink_registry sensor_msgs::sensor_msgs_library cpp_bag_reader ${NR_SLAM_MODULE_LINK_GROUP})

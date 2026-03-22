@@ -31,9 +31,10 @@
 
 class EssentialMatrixInitialization {
  public:
+  static constexpr int kRansacSampleSetSize = 8;
+
   struct Options {
     int max_features;
-    int min_sample_set_size;
     float min_parallax;
     float epipolar_threshold;
   };

@@ -51,11 +51,6 @@ class System {
   //  - For stereo map initialization
   //  - Reconstruction evaluation
   // This is controlled by the settings passed to the system
-  // TODO: implement stereo options
-  void TrackImageWithStereo(const cv::Mat& im_left, const cv::Mat& im_right);
-
-  // Tracks the next image using a precomputed depth image.
-  void TrackImageWithDepth(const cv::Mat& im_left, const cv::Mat& im_depth);
 
  private:
   // Applies preprocessing to the input image (CLAHE, etc).

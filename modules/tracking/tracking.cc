@@ -33,6 +33,33 @@
 
 using namespace std;
 
+namespace {
+MonocularMapInitializer::Options BuildMonocularInitializerOptions(
+    const Tracking::Options& options) {
+  MonocularMapInitializer::Options monocular_map_initializer_options;
+  monocular_map_initializer_options.klt_window_size =
+      options.monocular_init_klt_window_size;
+  monocular_map_initializer_options.klt_max_level =
+      options.monocular_init_klt_max_level;
+  monocular_map_initializer_options.klt_max_iters =
+      options.monocular_init_klt_max_iters;
+  monocular_map_initializer_options.klt_epsilon =
+      options.monocular_init_klt_epsilon;
+  monocular_map_initializer_options.klt_min_eig_th =
+      options.monocular_init_klt_min_eig_th;
+  monocular_map_initializer_options.klt_min_SSIM =
+      options.monocular_init_klt_min_SSIM;
+
+  monocular_map_initializer_options.rigid_initializer_max_features =
+      options.monocular_init_rigid_max_features;
+  monocular_map_initializer_options.rigid_initializer_min_parallax =
+      options.monocular_init_rigid_min_parallax;
+  monocular_map_initializer_options.rigid_initializer_epipolar_threshold =
+      options.monocular_init_rigid_epipolar_threshold;
+  return monocular_map_initializer_options;
+}
+}  // namespace
+
 Tracking::Tracking(const Tracking::Options options, std::shared_ptr<Map> map,
                    std::shared_ptr<CameraModel> calibration,
                    std::shared_ptr<ImageVisualizer> image_visualizer,
@@ -57,19 +84,8 @@ Tracking::Tracking(const Tracking::Options options, std::shared_ptr<Map> map,
 
   current_frame_ = make_shared<Frame>();
 
-  MonocularMapInitializer::Options monocular_map_initializer_options;
-  monocular_map_initializer_options.klt_window_size = 21;
-  monocular_map_initializer_options.klt_max_level = 4;
-  monocular_map_initializer_options.klt_max_iters = 10;
-  monocular_map_initializer_options.klt_epsilon = 0.0001;
-  monocular_map_initializer_options.klt_min_eig_th = 0.0001;
-  monocular_map_initializer_options.klt_min_SSIM = 0.5;
-
-  monocular_map_initializer_options.rigid_initializer_max_features = 4000;
-  monocular_map_initializer_options.rigid_initializer_min_sample_set_size = 8;
-  monocular_map_initializer_options.rigid_initializer_min_parallax = 0.999;
-  monocular_map_initializer_options.rigid_initializer_epipolar_threshold =
-      0.005;
+  MonocularMapInitializer::Options monocular_map_initializer_options =
+      BuildMonocularInitializerOptions(options_);
 
   monocular_map_initializer_ = make_unique<MonocularMapInitializer>(
       monocular_map_initializer_options, feature_extractor_, calibration_,
@@ -668,18 +684,8 @@ void Tracking::UpdateTriangulatedPoints() {
 }
 
 void Tracking::ResetMonocularInitializer() {
-  MonocularMapInitializer::Options monocular_map_initializer_options;
-  monocular_map_initializer_options.klt_window_size = 21;
-  monocular_map_initializer_options.klt_max_level = 4;
-  monocular_map_initializer_options.klt_max_iters = 10;
-  monocular_map_initializer_options.klt_epsilon = 0.0001;
-  monocular_map_initializer_options.klt_min_eig_th = 0.0001;
-  monocular_map_initializer_options.klt_min_SSIM = 0.5;
-  monocular_map_initializer_options.rigid_initializer_max_features = 4000;
-  monocular_map_initializer_options.rigid_initializer_min_sample_set_size = 8;
-  monocular_map_initializer_options.rigid_initializer_min_parallax = 0.999;
-  monocular_map_initializer_options.rigid_initializer_epipolar_threshold =
-      0.005;
+  MonocularMapInitializer::Options monocular_map_initializer_options =
+      BuildMonocularInitializerOptions(options_);
   monocular_map_initializer_ = make_unique<MonocularMapInitializer>(
       monocular_map_initializer_options, feature_extractor_, calibration_,
       image_visualizer_);

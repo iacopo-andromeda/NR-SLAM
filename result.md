@@ -3,8 +3,10 @@
 > **Paper:** "NR-SLAM: Non-Rigid Monocular SLAM"
 > **Authors:** Juan J. Gómez Rodríguez, José M.M. Montiel, Juan D. Tardós
 > **Repository:** [endomapper/NR-SLAM](https://github.com/endomapper/NR-SLAM)
-> **Date of analysis:** 2025-02-09
-> **Revision:** 2 (enhanced with line numbers, confidence levels, config parameters, and gap analysis)
+> **Date of analysis:** 2026-03-22
+> **Revision:** 4 (Andromeda-first refresh, runtime architecture correction, drift notes, and build-environment update)
+
+> **Current-state note (2026-03-22):** This document now prioritizes the active code path in this workspace (`apps/andromeda.cc`). Where this differs from the paper narrative, the implementation is treated as source-of-truth and the mismatch is called out explicitly.
 
 ---
 
@@ -163,7 +165,7 @@ $$\{T_{C^kW}^*, \{\mathbf{x}_i^k\}^*\} = \arg\min \sum_{k,i} E_{i,reproj}^k + \l
 
 **Paper reference:** Figure 2
 
-Three parallel threads: Tracking, Mapping, Visualization.
+Paper describes three parallel threads. Current implementation runs tracking and mapping sequentially in `System::TrackImage()`, while visualization runs in its own thread.
 
 ---
 
@@ -171,7 +173,7 @@ Three parallel threads: Tracking, Mapping, Visualization.
 
 **Paper reference:** Section VI
 
-Datasets: Hamlyn (rectified stereo), Endomapper (monocular endoscopy), simulation (synthetic deformation with ground truth).
+Paper experiments include Hamlyn, Endomapper, and simulation. Current workspace/runtime scope is Andromeda bag playback via `apps/andromeda.cc`.
 
 ---
 
@@ -200,11 +202,11 @@ Tested variants: only elastic, only viscous, only rigid, visco-elastic (full).
 
 ```
 NR-SLAM/
-├── apps/            # Executables (hamlyn, endomapper, simulation)
+├── apps/            # Executable entrypoint (andromeda)
 ├── modules/
 │   ├── SLAM/        # System orchestration (system.h/cc, settings.h/cc)
-│   ├── tracking/    # Tracking thread (tracking.cc, initializers)
-│   ├── mapping/     # Mapping thread (mapping.cc)
+│   ├── tracking/    # Tracking pipeline (tracking.cc, initializers)
+│   ├── mapping/     # Mapping pipeline (mapping.cc)
 │   ├── optimization/# g2o edge types + main optimization functions
 │   ├── map/         # Map, Frame, KeyFrame, MapPoint, RegularizationGraph
 │   ├── matching/    # LucasKanadeTracker
@@ -220,7 +222,12 @@ NR-SLAM/
 └── CMakeLists.txt
 ```
 
-**Build:** C++17, CMake, produces `libNR-SLAM.so` + 3 executables.
+**Build:** C++17, CMake, currently produces `libNR-SLAM.so` + `build/bin/andromeda`.
+
+**Build environment note:** `build.sh` now runs as a `zsh` script and attempts
+to source `~/.andromeda_profile` when `ros_setup` is not already defined, then
+invokes `ros_setup` before CMake configuration. This fixes the workspace-specific
+ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 
 ### 2.2 Key Source Files (by importance)
 
@@ -234,6 +241,7 @@ NR-SLAM/
 | `optimization/*.cc` (10 files) | ~60 each | g2o edge type implementations |
 | `utilities/geometry_toolbox.cc` | ~100 | Weight computation, triangulation |
 | `SLAM/system.cc` | ~130 | Thread orchestration |
+| `build.sh` | ~90 | Build entrypoint; bootstraps ROS shell environment via `ros_setup` before CMake |
 
 ### 2.3 Dependencies and External Libraries
 
@@ -249,20 +257,32 @@ NR-SLAM/
 | **Boost** | Filesystem |
 | **fmt** | String formatting |
 
+### 2.3.1 Build bootstrap behavior
+
+- `build.sh` is the expected local build entrypoint and the command used by the
+  provided VS Code build tasks.
+- The script now attempts to source `~/.andromeda_profile` when `ros_setup` is
+  missing, then runs `ros_setup` before `cmake`.
+- This specifically addresses the previously observed configure-time failure:
+  `ModuleNotFoundError: No module named 'ament_package'` from
+  `ament_cmake_core` while resolving ROS dependencies for
+  `third_party/cpp_bag_reader`.
+
 ### 2.4 Configuration Parameters (from `data/*/settings.yaml`)
 
 | YAML Key | Default | Description |
 |----------|---------|-------------|
-| `Camera.type` | — | `PinHole` or `KannalaBrandt8` |
+| `Camera.model` | — | `PinHole`, `DistortedPinHole`, or `KannalaBrandt8` |
 | `Camera.fx/fy/cx/cy` | — | Intrinsics |
-| `klt_window_size` | 21 | KLT tracking window |
-| `klt_max_level` | 3 | KLT pyramid levels |
-| `klt_max_iters` | 50 | KLT max iterations |
-| `klt_epsilon` | 0.01 | KLT convergence threshold |
-| `klt_min_eig_th` | 1e-4 | KLT min eigenvalue |
-| `klt_min_SSIM` | 0.7 | SSIM rejection threshold |
-| `images_to_insert_keyframe` | 5 | Frames between keyframe insertions |
-| `radians_per_pixel` | — | Camera resolution (for parallax thresholds) |
+| `Tracking.klt_window_size` | 21 | KLT tracking window |
+| `Tracking.klt_max_level` | 4 | KLT pyramid levels |
+| `Tracking.klt_max_iters` | 10 | KLT max iterations |
+| `Tracking.klt_epsilon` | 0.0001 | KLT convergence threshold |
+| `Tracking.klt_min_eig_th` | 1e-4 | KLT min eigenvalue |
+| `Tracking.klt_min_SSIM` | 0.65 | SSIM rejection threshold |
+| `Tracking.images_to_insert_keyframe` | 5 | Frames between keyframe insertions |
+| `Tracking.lost_bootstrap_frame_stride` | 3 | LOST bootstrap subsampling factor |
+| `Tracking.min_tracked_points_abort` | 10 | Threshold to enter LOST mode |
 
 ---
 
@@ -427,7 +447,7 @@ NR-SLAM/
 | **Paper Ref** | Section V-B: Essential matrix from 5-point RANSAC, midpoint triangulation, scale from 3 cm median depth |
 | **Code Ref** | `modules/tracking/monocular_map_initializer.cc/h`, `essential_matrix_initializer.cc/h`, `tracking.cc` lines 141–215 (`MonocularMapInitialization`) |
 | **Key steps** | (1) Feature extraction with ShiTomasi (NMS window = 7, `:45`), (2) KLT tracking between reference and current (window=21, level=4, SSIM=0.5), (3) Essential matrix estimation (min 8 matches, RANSAC seed=4, p=0.95, ε=0.005), (4) Midpoint triangulation (`geometry_toolbox.cc:49–85`), (5) Scale to 3 cm median depth (`tracking.cc:159`, `scale = 3.f / median_depth`), (6) Initialize DDG with σ = `sigma_scaled * 3` (`:199`) |
-| **Config Params** | `rigid_initializer_max_features` = 4000 (`:62`), `rigid_initializer_min_sample_set_size` = 8 (`:63`), `rigid_initializer_min_parallax` = 0.999 (`:64`), `rigid_initializer_epipolar_threshold` = 0.005 (`:65`), `klt_min_SSIM` = 0.5 (`:60` for initializer) |
+| **Config Params** | `rigid_initializer_max_features` = 4000 (`:62`), `rigid_initializer_min_parallax` = 0.999 (`:63`), `rigid_initializer_epipolar_threshold` = 0.005 (`:64`), `klt_min_SSIM` = 0.5 (`:60` for initializer); the RANSAC sample size is fixed to the 8-point algorithm |
 | **Explanation** | Paper: "We use the midpoint method from [27] to compute the Essential matrix." The code uses an 8-point algorithm variant, not 5-point. Midpoint triangulation uses inverse-depth weighting (`geometry_toolbox.cc:80–84`). Scale is hardcoded to 3 cm median depth as stated in paper. |
 | **Confidence** | 🟡 **MEDIUM** — Matches paper description but uses 8-point (not 5-point) Essential matrix estimation. |
 
@@ -452,10 +472,10 @@ NR-SLAM/
 | Field | Detail |
 |-------|--------|
 | **Paper Ref** | Figure 2: Three-thread architecture (Tracking, Mapping, Visualization) |
-| **Code Ref** | `modules/SLAM/system.cc`: creates threads for tracking, mapping, visualization |
-| **Integration** | `system.h` orchestrates `Tracking`, `Mapping`, `ImageVisualizer` objects sharing a `Map` |
-| **Explanation** | Tracking runs at frame rate. Mapping processes keyframes or does frame-level triangulation when idle. Visualization runs independently with Pangolin. |
-| **Confidence** | 🟢 **HIGH** — Direct match. |
+| **Code Ref** | `modules/SLAM/system.cc`: `TrackImage()` executes tracking then mapping in one call path; only `MapVisualizer::Run()` is launched in a separate thread |
+| **Integration** | `system.h` orchestrates `Tracking`, `Mapping`, and visualization around a shared `Map` |
+| **Explanation** | Current implementation differs from Figure 2: tracking and mapping are sequential per frame; visualization is threaded. |
+| **Confidence** | 🟡 **MEDIUM** — Conceptual match at module level, but not thread-level parity with the paper diagram. |
 
 ---
 
@@ -488,7 +508,7 @@ NR-SLAM/
 | **V-A** Deformable BA | `mapping/`, `optimization/` | `mapping.cc:59–60`, `g2o_optimization.cc:884–1162` | See §3.11 |
 | **V-B** Initialization | `tracking/` | `monocular_map_initializer.cc`, `essential_matrix_initializer.cc`, `tracking.cc:141–215` | See §3.12 |
 | **V-C** Triangulation | `mapping/`, `optimization/` | `mapping.cc:67–271`, `g2o_optimization.cc:558–818` | See §3.13 |
-| **VI** Experiments | `apps/`, `datasets/`, `utilities/` | `hamlyn.cc`, `endomapper.cc`, `simulation.cc`, `evaluation.cc` | — |
+| **VI** Experiments | `apps/`, `datasets/`, `utilities/` | Current active entrypoint is `andromeda.cc`; historical paper datasets remain theoretical context | — |
 | **Fig. 2** Architecture | `SLAM/` | `system.h/cc`, `settings.h/cc` | See §3.14 |
 
 ---
@@ -500,9 +520,9 @@ NR-SLAM/
 | Paper Component | Paper Section | Status | Notes |
 |----------------|---------------|--------|-------|
 | **Loop closure** | VII (Future Work) | 🔴 **ABSENT** | Paper explicitly states "For now, the system works well without loop closure" and lists it as future work. Not implemented in code. |
-| **5-point Essential matrix** | V-B | 🟠 **DIFFERENT** | Paper says "Essential matrix" generally. Code uses 8-point algorithm (`essential_matrix_initializer.cc:63`, `rigid_initializer_min_sample_set_size=8`). Functionally equivalent but different RANSAC min sample. |
+| **5-point Essential matrix** | V-B | 🟠 **DIFFERENT** | Paper says "Essential matrix" generally. Code uses a fixed 8-point algorithm (`essential_matrix_initialization.h/.cc`). Functionally equivalent but different RANSAC min sample. |
 | **Explicit deformation magnitude tracking per eq.** | III-A | 🟡 **IMPLICIT** | Paper discusses energy formulation. Code uses g2o's internal squared-error handling rather than explicit energy computation. Equivalent but the code never computes the total energy — g2o minimizes it implicitly. |
-| **Simulation deformation model (Eq. 15)** | VI-A | 🔴 **EXTERNAL** | Eq. 15 describes the synthetic deformation model used to generate simulation data. This is not part of the NR-SLAM system itself — the simulation dataset is generated externally. The `simulation.cc` app only reads pre-generated data. |
+| **Simulation deformation model (Eq. 15)** | VI-A | 🔴 **EXTERNAL** | Eq. 15 is a synthetic-data generator model, not an online SLAM component. In this workspace, the active runtime path is Andromeda bag playback. |
 
 ---
 
@@ -512,13 +532,13 @@ NR-SLAM/
 |-------------|----------|-------------|--------|
 | **IQR-based deformation outlier filtering** | `g2o_optimization.cc:395–415` | After tracking optimization, deformation magnitudes exceeding $Q_3 + 1.5 \times IQR$ are rejected and those points' status set to `TRACKED` (losing 3D). | **Critical for robustness.** Prevents large erroneous deformations from corrupting the map. Not mentioned in paper. |
 | **Lost mappoint deformation propagation** | `g2o_optimization.cc:444–556` | Second optimization pass estimates deformations for untracked points using `SpatialRegularizerFixed` edges with neighbors' deformations frozen. | **Core mid-term data association enabler.** Paper mentions DDG-based propagation but not this specific optimization-based approach. |
-| **CLAHE preprocessing** | `system.cc` (CLAHE call), all apps | Contrast-Limited Adaptive Histogram Equalization applied to all input images before tracking. `clipLimit=3.0`, `tileGridSize=(8,8)`. | **Essential for endoscopy.** Addresses low-contrast, non-uniform illumination in endoscopic images. Not discussed in paper. |
+| **CLAHE preprocessing** | `system.cc` (`ImageProcessing`) | Contrast-Limited Adaptive Histogram Equalization applied to all input images before tracking. `clipLimit=2.0`, `tileGridSize=(8,8)`. | **Essential for endoscopy.** Addresses low-contrast, non-uniform illumination in endoscopic images. Not discussed in paper. |
 | **DBSCAN clustering** | `utilities/dbscan.cc` → `tracking.cc` (stereo init) | Used for 3D point outlier filtering during stereo initialization. 2D: ε=0.2, min_pts=3. 3D: ε=2.5, min_pts=5. | Robustification of initialization. Paper mentions "cluster feature tracks" but does not detail DBSCAN parameters. |
 | **Edge deduplication classes** | `g2o_optimization.cc:820–882` | `TemporalPoint` and `SpatialPoint` classes with custom hash functions prevent duplicate regularizer edges in DBA. | Engineering detail not in paper, needed for correct optimization. |
 | **Point status BAD from graph quality** | `g2o_optimization.cc:438–442` | Points with < 50% good DDG connections are marked `BAD`. | Map quality maintenance not detailed in paper. |
 | **Photometric information storage** | `tracking.cc:203–208, 426–430` | KLT patches stored per map point for mid-term re-tracking. | Enables persistent appearance templates. Mentioned implicitly in paper's mid-term section but not detailed. |
-| **Stereo initialization path** | `tracking.cc:220–290` | Alternative stereo initialization with hardcoded baseline `3886.37`, depth range 35.5–70.5. | Commented out in default path. Not in paper (paper is monocular). |
-| **Minimum tracked points exit** | `tracking.cc:89` | System `exit(0)` when tracked 3D points < 10. | Crash-avoidance heuristic. |
+| **Stereo support is legacy/non-primary** | `modules/stereo/*`, `system.h`, `system.cc` | Stereo utilities and evaluator wiring still exist in the codebase, but the active runtime entrypoint is monocular Andromeda (`apps/andromeda.cc`). | Important scope drift versus older docs; paper focus remains monocular. |
+| **LOST recovery bootstrap** | `tracking.cc` (`TrackImage`, `LostModeBootstrap`) | When tracked points drop below threshold, tracking enters `LOST` and attempts monocular re-bootstrap with frame stride and grace-period thresholds. | **Major practical extension.** Provides recovery behavior not specified in the paper. |
 
 ---
 
@@ -529,7 +549,7 @@ NR-SLAM/
 | **"Weighted average of scene flow"** (Section IV-C) for lost points | Optimization via `SpatialRegularizerFixed` with Levenberg-Marquardt (10 iterations) | Code uses optimization rather than closed-form average. More robust but different algorithm. |
 | **Deformation variables $\delta_i^t$ in DBA** (Eq. 10) | Absolute landmark positions $\mathbf{x}_i^k$ per keyframe | Mathematically equivalent constraints but different parameterization. DBA doesn't explicitly represent deformations — the viscous regularizer operates on position differences across keyframes instead. |
 | **Keyframe insertion policy** (Section IV-B) | Simple periodic insertion every N frames (`images_to_insert_keyframe`, default 5) | Paper doesn't detail the policy. Code uses the simplest possible approach. No quality-based, parallax-based, or covisibility-based triggers. |
-| **Continuous operation** | Hard exit on tracking failure (< 10 points) | No relocalization or recovery mechanism. Paper mentions this as a limitation. |
+| **Continuous operation** | LOST mode + monocular re-bootstrap (`LostModeBootstrap`) | Not full relocalization/loop closure, but practical recovery is implemented in code beyond the paper description. |
 
 ---
 
@@ -566,7 +586,7 @@ NR-SLAM/
 | `0.5` | Bad-connection ratio threshold | `g2o_optimization.cc:438,762,774` |
 | `1.5` | IQR multiplier for outlier detection | `g2o_optimization.cc:407` |
 | `0.75`/`0.25` | IQR quartile boundaries | `g2o_optimization.cc:403–404` |
-| `3.0` / `(8,8)` | CLAHE clip limit / tile size | `system.cc` |
+| `2.0` / `(8,8)` | CLAHE clip limit / tile size | `system.cc` |
 | `7` | ShiTomasi NMS window | `tracking.cc:45` |
 
 #### Initialization Constants
@@ -595,7 +615,7 @@ NR-SLAM/
 
 | Context | Window | Level | Iters | Epsilon | MinEig | SSIM |
 |---------|--------|-------|-------|---------|--------|------|
-| **Tracking** (YAML) | 21 | 3 | 50 | 0.01 | 1e-4 | 0.7 |
+| **Tracking** (Andromeda YAML) | 21 | 4 | 10 | 0.0001 | 1e-4 | 0.65 |
 | **Init KLT** (hardcoded) | 21 | 4 | 10 | 0.0001 | 0.0001 | 0.5 |
 | **Point reuse** (mixed) | YAML | 1 | YAML | YAML | YAML | 0.75 |
 | **Stereo matcher** | 21 | 4 | 10 | 0.0001 | 0.0001 | 0.5 |
@@ -604,15 +624,15 @@ NR-SLAM/
 
 ### 4.5 Potential Issues & Observations
 
-1. **Inconsistent SSIM thresholds:** Three different SSIM thresholds are used — 0.5 (initialization), 0.7 (tracking, from YAML), 0.75 (point reuse, hardcoded). The paper does not distinguish between these contexts. The strictest threshold (0.75) for point reuse makes sense since stored templates may be stale.
+1. **Inconsistent SSIM thresholds:** Three different SSIM thresholds are used — 0.5 (initialization), 0.65 (tracking, Andromeda YAML), 0.75 (point reuse, hardcoded). The paper does not distinguish between these contexts. The strictest threshold (0.75) for point reuse makes sense since stored templates may be stale.
 
-2. **Hardcoded stereo baseline:** `tracking.cc:228` contains `3886.37` — a hardcoded `baseline × fx` for the Hamlyn dataset stereo camera. This value is dataset-specific and should be configurable.
+2. **Threading mismatch with paper diagram:** Figure 2 suggests parallel tracking/mapping/visualization, but current code runs tracking + mapping sequentially and threads only visualization.
 
 3. **Missing DBA KeyFrame pose fixation:** In `LocalDeformableBundleAdjustment()`, no keyframe pose is explicitly fixed (`setFixed(true)` is never called on camera vertices). The system relies on g2o's gauge freedom handling, which may lead to gauge drift. Standard practice would fix the oldest keyframe.
 
 4. **Duplicate code pattern:** KLT parameter defaults are defined in at least 6 separate locations (`tracking.cc`, `monocular_map_initializer.h`, `stereo_lucas_kanade.h`, `system.cc`, `matching/lucas_kanade_tracker.h`) with slightly different values. This creates maintenance risk.
 
-5. **Hard exit on tracking failure:** `tracking.cc:89` calls `exit(0)` when tracked points drop below 10. A production system should implement relocalization or graceful degradation.
+5. **Recovery exists but loop closure still absent:** Tracking no longer hard-exits on low support; it enters LOST and attempts monocular bootstrap recovery. However, true relocalization/loop-closure remains absent.
 
 6. **3-DOF chi² threshold inconsistency:** The 3-DOF threshold for tracking spatial regularizers is 0.584 (very tight, roughly 10% confidence), while for deformable triangulation it's 7.815 (standard 95% confidence). The tracking threshold is unusually strict and may cause over-rejection of valid spatial constraints.
 
@@ -658,7 +678,7 @@ Begin with these three files, in order:
 
 | Order | File | Why |
 |-------|------|-----|
-| 1 | `apps/hamlyn.cc` (or `endomapper.cc`, `simulation.cc`) | The `main()` function. Shows how a dataset is loaded and fed frame-by-frame into the `System` object. Read this to understand the input contract: one image per call to `System::TrackImage()` or `System::TrackImageWithStereo()`. |
+| 1 | `apps/andromeda.cc` | The active `main()` entrypoint. It reads rosbag messages, decodes `/image_raw/compressed`, and feeds frames to `System::TrackImage()`. |
 | 2 | `modules/SLAM/system.cc` | The orchestrator. The constructor wires everything together (lines 27–99): `Settings` → `Map` → `Tracking` → `Mapping` → `MapVisualizer`. The per-frame pipeline is `System::TrackImage()` (line 113): preprocess → mask → `tracker_->TrackImage()` → `mapper_->DoMapping()`. This is the only place where tracking and mapping are called sequentially — there is no separate mapping thread despite the paper's Fig. 2 suggesting parallel execution (see §4.3). |
 | 3 | `modules/SLAM/settings.cc` / `settings.h` | Reads the YAML config under `data/*/settings.yaml`. All camera intrinsics, KLT parameters, and visualization settings are parsed here. Check this file to understand what is configurable vs. hardcoded (see §4.4). |
 
@@ -843,7 +863,7 @@ If you are extending NR-SLAM, these are the typical places to intervene:
 | **Change keyframe insertion policy** | `tracking.cc:345–354` — `NeedNewKeyFrame()`. Currently a simple frame counter. | Replace with parallax-based, covisibility-based, or tracking-quality-based logic. |
 | **Tune regularization weights** | `g2o_optimization.cc` lines 199–210 (tracking) and 860–874 (DBA). All sigmas and `k_` are local constants. | Consider moving these to `settings.yaml` and `Tracking::Options` / `Mapping::Options`. |
 | **Support a new camera model** | Subclass `CameraModel` (see `calibration/pin_hole.h`, `calibration/kannala_brandt_8.h`). Implement `Project()`, `Unproject()`, `ProjectionJacobian()`. Register in `settings.cc`. | The system is camera-model-agnostic through the `CameraModel` interface. |
-| **Add a new dataset** | Create a loader in `modules/datasets/` (see `hamlyn.h/cc` for the pattern), add an app in `apps/`, add a YAML config in `data/`. | The `System` class is dataset-agnostic — it just receives images. |
+| **Add a new dataset** | Create a loader in `modules/datasets/` (use `andromeda.h/cc` as current pattern), add an app in `apps/`, add a YAML config in `data/`. | The `System` class is dataset-agnostic — it just receives images. |
 
 ---
 

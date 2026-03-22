@@ -20,6 +20,7 @@
 
 #include "map_visualizer.h"
 
+#include <filesystem>
 #include <thread>
 
 #include "absl/log/check.h"
@@ -394,6 +395,19 @@ void MapVisualizer::SaveRenderToDisk() {
   if (last_frame_id_saved_ < last_frame_id_drawn_) {
     const string render_path =
         options_.render_save_path + to_string(last_frame_id_drawn_);
+
+    const std::filesystem::path render_parent(
+        std::filesystem::path(render_path).parent_path());
+    if (!render_parent.empty()) {
+      std::error_code error;
+      std::filesystem::create_directories(render_parent, error);
+      if (error) {
+        LOG(ERROR) << "Could not create render output directory '"
+                   << render_parent.string() << "': " << error.message();
+        return;
+      }
+    }
+
     main_display_.SaveRenderNow(render_path);
     LOG(INFO) << "Saved render to disk at: " << render_path;
 

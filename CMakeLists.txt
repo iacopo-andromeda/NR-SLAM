@@ -22,8 +22,13 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
 
+if(EXISTS "/usr/bin/python3")
+    set(Python3_EXECUTABLE "/usr/bin/python3" CACHE FILEPATH "Python3 executable" FORCE)
+endif()
+
 # Prioritize /usr/local for package discovery
 list(PREPEND CMAKE_PREFIX_PATH "/usr/local")
+list(PREPEND CMAKE_PREFIX_PATH "/opt/ros/jazzy")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -31,5 +36,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(third_party/abseil-cpp)
 add_subdirectory(third_party/g2o)
+add_subdirectory(third_party/cpp_bag_reader EXCLUDE_FROM_ALL)
 add_subdirectory(modules)
 add_subdirectory(apps)
