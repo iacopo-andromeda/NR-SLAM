@@ -188,7 +188,8 @@ void System::TrackImage(const cv::Mat& im) {
   stats.frame_id = frame_id;
 
   // Tracking status string.
-  switch (tracker_->GetTrackingStatus()) {
+  const auto tracking_status = tracker_->GetTrackingStatus();
+  switch (tracking_status) {
     case Tracking::TRACKING:
       stats.tracking_status = "TRACKING";
       break;
@@ -200,24 +201,36 @@ void System::TrackImage(const cv::Mat& im) {
       break;
   }
 
-  // Feature counts from the last frame committed to the map.
-  if (auto last_frame = map_->GetMutableLastFrame()) {
-    stats.n_keypoints = static_cast<int>(last_frame->Keypoints().size());
-    stats.n_tracked_3d = static_cast<int>(
-        last_frame->GetKeypointsWithStatus({TRACKED_WITH_3D}).size());
+  // Feature counts are only meaningful for frames that finished in TRACKING.
+  // In LOST/NOT_INITIALIZED, map_->GetMutableLastFrame() may refer to an older
+  // frame and would otherwise skew per-frame means with stale values.
+  if (tracking_status == Tracking::TRACKING) {
+    if (auto last_frame = map_->GetMutableLastFrame()) {
+      stats.n_keypoints = static_cast<int>(last_frame->Keypoints().size());
+      stats.n_tracked_3d = static_cast<int>(
+          last_frame->GetKeypointsWithStatus({TRACKED_WITH_3D}).size());
+    }
+  } else {
+    stats.n_keypoints = 0;
+    stats.n_tracked_3d = 0;
   }
   stats.n_map_points = static_cast<int>(map_->GetMapPoints().size());
 
   stats.ms_tracking = to_ms(t_tracking_start, t_tracking_end);
   stats.ms_mapping = to_ms(t_mapping_start, t_mapping_end);
   stats.ms_total = to_ms(t_frame_start, t_frame_end);
+  stats.ms_other = stats.ms_total - stats.ms_tracking - stats.ms_mapping;
+  if (stats.ms_other < 0.0) {
+    stats.ms_other = 0.0;
+  }
 
   LOG(INFO) << "[PERF] frame=" << frame_id
             << " status=" << stats.tracking_status
             << " kps=" << stats.n_keypoints << " kps_3d=" << stats.n_tracked_3d
             << " map_pts=" << stats.n_map_points
             << " ms_track=" << stats.ms_tracking
-            << " ms_map=" << stats.ms_mapping << " ms_total=" << stats.ms_total;
+            << " ms_map=" << stats.ms_mapping << " ms_other=" << stats.ms_other
+            << " ms_total=" << stats.ms_total;
 
   perf_logger_->LogFrame(stats);
 }

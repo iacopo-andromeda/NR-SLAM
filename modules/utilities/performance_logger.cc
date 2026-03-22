@@ -39,13 +39,13 @@ void PerformanceLogger::SaveToCSV(const std::string& path) const {
   }
 
   f << "frame_id,tracking_status,n_keypoints,n_tracked_3d,n_map_points,"
-       "ms_tracking,ms_mapping,ms_total\n";
+       "ms_tracking,ms_mapping,ms_other,ms_total\n";
 
   for (const auto& s : frames_) {
     f << s.frame_id << "," << s.tracking_status << "," << s.n_keypoints << ","
       << s.n_tracked_3d << "," << s.n_map_points << "," << std::fixed
       << std::setprecision(2) << s.ms_tracking << "," << s.ms_mapping << ","
-      << s.ms_total << "\n";
+      << s.ms_other << "," << s.ms_total << "\n";
   }
 
   f.close();
@@ -61,25 +61,30 @@ void PerformanceLogger::PrintSummary() const {
 
   const int total_frames = static_cast<int>(frames_.size());
   int tracking_frames = 0, lost_frames = 0, init_frames = 0;
+  int feature_frames = 0;
   double sum_keypoints = 0, sum_tracked_3d = 0, sum_map_points = 0;
-  double sum_ms_tracking = 0, sum_ms_mapping = 0, sum_ms_total = 0;
+  double sum_ms_tracking = 0, sum_ms_mapping = 0, sum_ms_other = 0,
+         sum_ms_total = 0;
   double max_ms_total = 0;
   std::vector<double> ms_total_vec;
   ms_total_vec.reserve(total_frames);
 
   for (const auto& s : frames_) {
-    if (s.tracking_status == "TRACKING")
+    if (s.tracking_status == "TRACKING") {
       tracking_frames++;
-    else if (s.tracking_status == "LOST")
+      feature_frames++;
+      sum_keypoints += s.n_keypoints;
+      sum_tracked_3d += s.n_tracked_3d;
+    } else if (s.tracking_status == "LOST") {
       lost_frames++;
-    else
+    } else {
       init_frames++;
+    }
 
-    sum_keypoints += s.n_keypoints;
-    sum_tracked_3d += s.n_tracked_3d;
     sum_map_points += s.n_map_points;
     sum_ms_tracking += s.ms_tracking;
     sum_ms_mapping += s.ms_mapping;
+    sum_ms_other += s.ms_other;
     sum_ms_total += s.ms_total;
     if (s.ms_total > max_ms_total) max_ms_total = s.ms_total;
     ms_total_vec.push_back(s.ms_total);
@@ -87,13 +92,23 @@ void PerformanceLogger::PrintSummary() const {
 
   // Median frame time.
   std::sort(ms_total_vec.begin(), ms_total_vec.end());
-  const double median_ms_total = ms_total_vec[total_frames / 2];
+  double median_ms_total = 0.0;
+  if ((total_frames % 2) == 0) {
+    const int hi = total_frames / 2;
+    const int lo = hi - 1;
+    median_ms_total = 0.5 * (ms_total_vec[lo] + ms_total_vec[hi]);
+  } else {
+    median_ms_total = ms_total_vec[total_frames / 2];
+  }
 
   const double mean_fps =
       (sum_ms_total > 0.0) ? (1000.0 * total_frames / sum_ms_total) : 0.0;
 
   auto pct = [&](int n) -> double { return (100.0 * n) / total_frames; };
   auto mean = [&](double sum) -> double { return sum / total_frames; };
+  auto feature_mean = [&](double sum) -> double {
+    return (feature_frames > 0) ? (sum / feature_frames) : 0.0;
+  };
 
   LOG(INFO).NoPrefix() << "";
   LOG(INFO).NoPrefix() << "========== NR-SLAM PERFORMANCE SUMMARY ==========";
@@ -108,10 +123,12 @@ void PerformanceLogger::PrintSummary() const {
   LOG(INFO).NoPrefix() << "  NOT_INITIALIZED       : " << init_frames << "  ("
                        << pct(init_frames) << "%)";
   LOG(INFO).NoPrefix() << "";
-  LOG(INFO).NoPrefix() << "--- Feature Counts (mean per frame) ---";
+  LOG(INFO).NoPrefix() << "--- Feature Counts (mean per TRACKING frame) ---";
+  LOG(INFO).NoPrefix() << "  Frames contributing    : " << feature_frames;
   LOG(INFO).NoPrefix() << "  Total keypoints       : " << std::fixed
-                       << std::setprecision(1) << mean(sum_keypoints);
-  LOG(INFO).NoPrefix() << "  Tracked with 3-D      : " << mean(sum_tracked_3d);
+                       << std::setprecision(1) << feature_mean(sum_keypoints);
+  LOG(INFO).NoPrefix() << "  Tracked with 3-D      : "
+                       << feature_mean(sum_tracked_3d);
   LOG(INFO).NoPrefix() << "  Active map points     : " << mean(sum_map_points);
   LOG(INFO).NoPrefix() << "";
   LOG(INFO).NoPrefix() << "--- Timing (mean per frame) ---";
@@ -119,6 +136,8 @@ void PerformanceLogger::PrintSummary() const {
                        << std::setprecision(2) << mean(sum_ms_tracking)
                        << " ms";
   LOG(INFO).NoPrefix() << "  Mapping               : " << mean(sum_ms_mapping)
+                       << " ms";
+  LOG(INFO).NoPrefix() << "  Other                : " << mean(sum_ms_other)
                        << " ms";
   LOG(INFO).NoPrefix() << "  Total                 : " << mean(sum_ms_total)
                        << " ms";

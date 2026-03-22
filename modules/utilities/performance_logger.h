@@ -51,6 +51,10 @@ class PerformanceLogger {
     // Wall-clock time spent inside mapper_->DoMapping() [ms].
     double ms_mapping = 0.0;
 
+    // Remaining wall-clock time per frame (preprocess, visualization, etc.)
+    // [ms].
+    double ms_other = 0.0;
+
     // Total wall-clock time for this frame (preprocessing included) [ms].
     double ms_total = 0.0;
   };
