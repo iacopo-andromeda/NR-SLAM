@@ -26,6 +26,10 @@ Masking.filterFile: "./data/andromeda/filters.txt"
 Visualization.cameraSize: 0.5
 
 System.autoplay: 1
+MapVisualizer.save_path = map_viz/
+Evaluation.save_path = viz/
+ImageVisualizer.save_path = eval/
+
 
 # ---------------------------------------------------------------------------
 # Tracking parameters
@@ -46,7 +50,7 @@ Tracking.klt_min_eig_th: 0.0001
 Tracking.klt_min_SSIM: 0.65
 
 # Insert a new keyframe after this many tracked frames.
-Tracking.images_to_insert_keyframe: 5
+Tracking.images_to_insert_keyframe: 10
 
 # Remove a map point that has not been observed for this many frames.
 Tracking.stale_mappoint_max_age_frames: 30

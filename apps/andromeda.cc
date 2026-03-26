@@ -64,12 +64,13 @@ struct CachedPose {
 };
 
 ABSL_FLAG(std::string, dataset_path,
-          "/home/galactus/Documents/robot-bags/rosbag2_13-02-2026_10-36-47",
+          "/home/galactus/Documents/robot-bags/Astra2/NZ/10-03-2026/"
+          "rosbag2_10-03-2026_17-46-39",
           "Path to the video dataset");
 ABSL_FLAG(std::string, settings_path, "", "Path to the settings file");
-ABSL_FLAG(uint64_t, starting_frame, 1771007830779022374ULL,
+ABSL_FLAG(uint64_t, starting_frame, 1773191045594002760ULL,
           "Start bound. Interpreted per --range_mode.");
-ABSL_FLAG(uint64_t, end_frame, 1771007832559881003ULL,
+ABSL_FLAG(uint64_t, end_frame, 1773191519847104401ULL,
           "End bound. Interpreted per --range_mode. 0 means no end bound.");
 ABSL_FLAG(std::string, range_mode, "timestamp_ns",
           "How to interpret start/end: message_index or timestamp_ns");

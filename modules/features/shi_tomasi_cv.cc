@@ -36,27 +36,24 @@ ShiTomasiCV::~ShiTomasiCV() {}
 
 void ShiTomasiCV::Extract(const cv::Mat& im, const cv::Mat& mask,
                           std::vector<cv::KeyPoint>& keypoints) {
+  // Extract new key points
   std::vector<cv::Point2f> corners;
-  // cv::imshow("Shi-Tomasi", im);
-  // cv::waitKey(0);
-  // cv::destroyAllWindows();
-
   cv::goodFeaturesToTrack(im, corners, options_.maxCorners,
                           options_.qualityLevel, options_.minDistance, mask,
                           options_.blockSize, options_.useHarrisDetector,
                           options_.k);
 
-  std::set<std::array<int, 2>> unique_corners;
-  for (auto& c : keypoints) {
-    unique_corners.insert({(int)round(c.pt.x), (int)round(c.pt.y)});
-  }
+  // Store the previous keypoints in a set to avoid duplicates.
+  auto old_keypoints = keypoints;
   keypoints.clear();
-
   for (const auto& c : corners) {
-    if (unique_corners.find({(int)round(c.x), (int)round(c.y)}) ==
-        unique_corners.end()) {
-      keypoints.emplace_back(c, 1.0, -1, 0, 0, next_feature_id_++);
+    // Ensure it is not too close to existing keypoints.
+    for (const auto& kp : old_keypoints) {
+      if (cv::norm(c - kp.pt) < options_.minDistance) {
+        continue;
+      }
     }
+    keypoints.emplace_back(c, 1.0, -1, 0, 0, next_feature_id_++);
   }
 }
 

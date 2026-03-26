@@ -29,8 +29,6 @@
 #include "map/regularization_graph.h"
 #include "map/temporal_buffer.h"
 
-class RegularizationGraph;
-
 class Map {
  public:
   struct Options {
@@ -92,6 +90,8 @@ class Map {
   //  p_old = world_old_from_world_new * p_new
   void RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new);
 
+  void Clear();
+
  private:
   // Mappings of the KeyFrame/MapPoint ids and the KeyFrame/MapPoint itself.
   absl::flat_hash_map<ID, std::shared_ptr<MapPoint>> mappoints_;
@@ -116,10 +116,10 @@ class Map {
   std::shared_ptr<MapPoint> FindNearbyMapPoint(
       const Eigen::Vector3f& position) const;
 
-  absl::Mutex last_frame_mutex_;
-  absl::Mutex keyframes_mutex_;
-
   float map_scale_;
+
+  RegularizationGraph::Options regularization_graph_options_;
+  TemporalBuffer::Options temporal_buffer_options_;
 };
 
 #endif  // NRSLAM_MAP_H

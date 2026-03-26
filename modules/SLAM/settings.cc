@@ -168,21 +168,21 @@ Settings::Settings(const std::string& configFile) {
   }
 
   map_visualizer_save_path_ =
-      readParameter<string>(fSettings, "MapVisualizer.save_path", found, true);
+      readParameter<string>(fSettings, "MapVisualizer.save_path", found, false);
   if (!found) {
     LOG(WARNING)
         << "MapVisualizer.save_path not in settings; set via --output_dir";
   }
 
   image_visualizer_save_path_ = readParameter<string>(
-      fSettings, "ImageVisualizer.save_path", found, true);
+      fSettings, "ImageVisualizer.save_path", found, false);
   if (!found) {
     LOG(WARNING)
         << "ImageVisualizer.save_path not in settings; set via --output_dir";
   }
 
   evaluation_save_path_ =
-      readParameter<string>(fSettings, "Evaluation.save_path", found, true);
+      readParameter<string>(fSettings, "Evaluation.save_path", found, false);
   if (!found) {
     LOG(WARNING)
         << "Evaluation.save_path not in settings; set via --output_dir";
@@ -333,9 +333,9 @@ std::string Settings::GetImageVisualizerPath() {
 std::string Settings::GetEvaluationPath() { return evaluation_save_path_; }
 
 void Settings::OverrideOutputDir(const std::string& dir) {
-  map_visualizer_save_path_ = dir + "/map_viz/";
-  image_visualizer_save_path_ = dir + "/viz/";
-  evaluation_save_path_ = dir + "/eval/";
+  map_visualizer_save_path_ = dir + "/" + map_visualizer_save_path_;
+  image_visualizer_save_path_ = dir + "/" + image_visualizer_save_path_;
+  evaluation_save_path_ = dir + "/" + evaluation_save_path_;
 }
 
 int Settings::GetLostBootstrapFrameStride() {

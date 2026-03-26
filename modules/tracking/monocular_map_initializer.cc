@@ -149,6 +149,8 @@ void MonocularMapInitializer::ResetInitialization(const cv::Mat& im,
 
 void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
                                               const cv::Mat& mask) {
+  // Try to associate the previous frames features with the current image using
+  // KLT tracking.
   if (internal_status_ == NO_DATA) {
     LOG(INFO) << "[INIT_DIAG] NO_DATA -> reset initialization";
     ResetInitialization(im, mask);
@@ -157,7 +159,7 @@ void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
     n_tracks_in_image_ =
         klt_tracker_.Track(im, current_keypoints_, current_keypoint_statuses_,
                            true, options_.klt_min_SSIM, mask);
-
+    // Tracking failed, reset
     if (n_tracks_in_image_ <
         EssentialMatrixInitialization::MINIMUM_TRIANGULATED_POINTS) {
       LOG(WARNING)
@@ -177,8 +179,6 @@ void MonocularMapInitializer::DataAssociation(const cv::Mat& im,
         LOG(WARNING)
             << "Data association reset: reference age exceeded 30 frames";
         ResetInitialization(im, mask);
-
-        images_from_last_reference_ = 0;
       }
     }
   }
@@ -354,7 +354,7 @@ MonocularMapInitializer::BuildInitializationResults(
   initialization_results.camera_transform_world = camera_trajectory.back();
 
   vector<float> initial_depths;
-
+  initialization_results.reserve(feature_tracks.size());
   for (int idx = 0; idx < feature_tracks.size(); idx++) {
     cv::KeyPoint reference_keypoint(feature_tracks[idx].front());
     cv::KeyPoint current_keypoint(feature_tracks[idx].back());

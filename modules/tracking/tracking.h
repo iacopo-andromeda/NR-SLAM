@@ -88,6 +88,8 @@ class Tracking {
   // Map::RebaseWorldFrame: world_old_from_world_new.
   void RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new);
 
+  void Reset();
+
  private:
   void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
                        const std::vector<cv::KeyPoint>& extracted_keypoints,
@@ -123,22 +125,6 @@ class Tracking {
                   absl::flat_hash_set<ID> lost_mappoint_ids);
 
   void UpdateTriangulatedPoints();
-
-  void MarkTrackedMapPointsSeen(const int frame_id);
-
-  void SeedMapPointLastSeen(const int frame_id);
-
-  void PruneStaleMapPointCache(const int frame_id);
-
-  bool IsMapPointStale(const ID mappoint_id, const int frame_id) const;
-
-  // Re-bootstrap the map from scratch using the monocular initializer when the
-  // system is in LOST state. Returns true when enough parallax has accumulated
-  // and new 3D landmarks have been inserted into the map.
-  bool LostModeBootstrap(const cv::Mat& im, const cv::Mat& mask);
-
-  // Resets the monocular initializer so it starts fresh for re-bootstrap.
-  void ResetMonocularInitializer();
 
   Options options_;
 

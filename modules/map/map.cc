@@ -25,27 +25,35 @@
 using namespace std;
 
 Map::Map(Map::Options& options) : options_(options) {
-  RegularizationGraph::Options regularization_graph_options;
-  regularization_graph_options.weight_sigma = 10.5f;
-  regularization_graph_options.streching_th = 1.1f;
+  regularization_graph_options_.weight_sigma = 10.5f;
+  regularization_graph_options_.streching_th = 1.1f;
   regularization_graph_ =
-      make_shared<RegularizationGraph>(regularization_graph_options, this);
+      make_shared<RegularizationGraph>(regularization_graph_options_, this);
 
-  TemporalBuffer::Options temporal_buffer_options;
-  temporal_buffer_options.max_buffer_size = options.max_temporal_buffer_size;
-  temporal_buffer_options.max_track_lookback_frames =
+  temporal_buffer_options_.max_buffer_size = options.max_temporal_buffer_size;
+  temporal_buffer_options_.max_track_lookback_frames =
       options.triangulation_track_lookback_frames;
-  temporal_buffer_ = make_shared<TemporalBuffer>(temporal_buffer_options);
+  temporal_buffer_ = make_shared<TemporalBuffer>(temporal_buffer_options_);
+}
+
+void Map::Clear() {
+  regularization_graph_ =
+      make_shared<RegularizationGraph>(regularization_graph_options_, this);
+  temporal_buffer_ = make_shared<TemporalBuffer>(temporal_buffer_options_);
+
+  mappoints_.clear();
+  keyframes_.clear();
+  unmapped_keyframes_.clear();
+
+  frame_to_render_ = Frame();
+  last_frame_ = nullptr;
+  map_scale_ = 1.0f;
 }
 
 void Map::InsertKeyFrame(std::shared_ptr<KeyFrame> keyframe) {
-  keyframes_mutex_.Lock();
-
   keyframes_[keyframe->GetId()] = keyframe;
 
   unmapped_keyframes_.push_back(keyframe->GetId());
-
-  keyframes_mutex_.Unlock();
 }
 
 void Map::InsertMapPoint(std::shared_ptr<MapPoint> mappoint) {
@@ -107,12 +115,7 @@ std::shared_ptr<KeyFrame> Map::GetNextUnmappedKeyFrame() {
 }
 
 absl::btree_map<ID, std::shared_ptr<KeyFrame>> Map::GetKeyFrames() {
-  keyframes_mutex_.Lock();
-
   auto keyframes = keyframes_;
-
-  keyframes_mutex_.Unlock();
-
   return keyframes;
 }
 
@@ -135,25 +138,17 @@ std::shared_ptr<KeyFrame> Map::GetKeyFrame(ID id) {
 }
 
 void Map::SetLastFrame(std::shared_ptr<Frame> frame) {
-  last_frame_mutex_.Lock();
-
   last_frame_ = frame;
 
   temporal_buffer_->InsertSnapshotFromFrame(*last_frame_);
 
   frame_to_render_ = *frame;
 
-  last_frame_mutex_.Unlock();
-
   frame->IncreaseId();
 }
 
 Frame Map::GetLastFrame() {
-  last_frame_mutex_.Lock();
-
   Frame latest_frame = frame_to_render_;
-
-  last_frame_mutex_.Unlock();
 
   return latest_frame;
 }

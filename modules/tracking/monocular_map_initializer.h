@@ -52,6 +52,13 @@ class MonocularMapInitializer {
 
     std::vector<Eigen::Vector3f> reference_landmark_positions;
     std::vector<Eigen::Vector3f> current_landmark_positions;
+
+    void reserve(int n) {
+      reference_keypoints.reserve(n);
+      current_keypoints.reserve(n);
+      reference_landmark_positions.reserve(n);
+      current_landmark_positions.reserve(n);
+    }
   };
 
   MonocularMapInitializer() = delete;

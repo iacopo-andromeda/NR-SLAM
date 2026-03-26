@@ -21,6 +21,7 @@
 #include "map/regularization_graph.h"
 
 #include "absl/log/log.h"
+#include "map/map.h"
 #include "utilities/geometry_toolbox.h"
 
 using namespace std;

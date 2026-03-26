@@ -23,8 +23,8 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "eigen3/Eigen/Core"
-#include "map.h"
 
 typedef long unsigned int ID;
 
