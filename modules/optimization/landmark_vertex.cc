@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "landmark_vertex.h"
+#include "optimization/landmark_vertex.h"
 
 #include "g2o/core/factory.h"
 #include "g2o/stuff/misc.h"

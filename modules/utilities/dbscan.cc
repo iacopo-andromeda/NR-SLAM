@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "dbscan.h"
+#include "utilities/dbscan.h"
 
 #include <mlpack/core.hpp>
 #include <mlpack/methods/dbscan/dbscan.hpp>

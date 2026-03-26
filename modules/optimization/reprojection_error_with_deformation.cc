@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "reprojection_error_with_deformation.h"
+#include "optimization/reprojection_error_with_deformation.h"
 
 #include "g2o/core/factory.h"
 

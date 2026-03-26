@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stereo_pattern_matching.h"
+#include "stereo/stereo_pattern_matching.h"
 
 #include "absl/log/log.h"
 

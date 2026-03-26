@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "shi_tomasi.h"
+#include "features/shi_tomasi.h"
 
 #include <opencv2/core/core.hpp>
 

@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "spatial_regularizer_with_observation.h"
+#include "optimization/spatial_regularizer_with_observation.h"
 
 SpatialRegularizerWithObservation::SpatialRegularizerWithObservation() {};
 

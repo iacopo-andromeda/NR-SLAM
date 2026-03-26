@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stereo_lucas_kanade.h"
+#include "stereo/stereo_lucas_kanade.h"
 
 #include "absl/log/check.h"
 

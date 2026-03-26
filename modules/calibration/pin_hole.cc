@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "pin_hole.h"
+#include "calibration/pin_hole.h"
 
 void PinHole::Project(const Eigen::Vector3f& landmark_position,
                       Eigen::Vector2f& pixel_position) const {

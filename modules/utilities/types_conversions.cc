@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "types_conversions.h"
+#include "utilities/types_conversions.h"
 
 #include <eigen3/Eigen/Geometry>
 

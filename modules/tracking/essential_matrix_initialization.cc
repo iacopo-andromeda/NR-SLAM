@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "essential_matrix_initialization.h"
+#include "tracking/essential_matrix_initialization.h"
 
 #include "absl/log/log.h"
 #include "utilities/geometry_toolbox.h"

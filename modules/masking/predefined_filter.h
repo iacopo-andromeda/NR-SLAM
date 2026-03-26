@@ -21,7 +21,7 @@
 #ifndef NRSLAM_PREDEFINEDFILTER_H
 #define NRSLAM_PREDEFINEDFILTER_H
 
-#include "filter.h"
+#include "masking/filter.h"
 
 class PredefinedFilter : public Filter {
  public:

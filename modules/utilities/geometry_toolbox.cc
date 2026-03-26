@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "geometry_toolbox.h"
+#include "utilities/geometry_toolbox.h"
 
 #include <cmath>
 
