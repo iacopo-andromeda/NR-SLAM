@@ -37,7 +37,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
 
 absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(
     TemporalBuffer& temporal_buffer, int candidate_id,
-    std::shared_ptr<CameraModel> calibration, const float scale);
+    std::shared_ptr<CameraModel> calibration);
 
 void LocalDeformableBundleAdjustment(std::shared_ptr<Map> map,
                                      std::shared_ptr<CameraModel> calibration,

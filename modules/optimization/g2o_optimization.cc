@@ -690,7 +690,7 @@ absl::flat_hash_set<ID> CameraPoseAndDeformationOptimization(
 
 absl::StatusOr<Eigen::Vector3f> DeformableTriangulation(
     TemporalBuffer& temporal_buffer, int candidate_id,
-    std::shared_ptr<CameraModel> calibration, const float scale) {
+    std::shared_ptr<CameraModel> calibration) {
   // Recover feature track.
   auto candidate_track = temporal_buffer.GetFeatureTrack(candidate_id);
 
