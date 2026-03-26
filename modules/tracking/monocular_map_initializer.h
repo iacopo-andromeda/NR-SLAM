@@ -70,6 +70,7 @@ class MonocularMapInitializer {
 
   absl::StatusOr<InitializationResults> ProcessNewImage(const cv::Mat& im,
                                                         const cv::Mat& mask);
+  void Clear();
 
  private:
   void DataAssociation(const cv::Mat& im, const cv::Mat& mask);
@@ -138,6 +139,8 @@ class MonocularMapInitializer {
   int n_tracks_in_image_ = 0;
 
   std::shared_ptr<CameraModel> calibration_;
+
+  EssentialMatrixInitialization::Options essential_matrix_initializer_options_;
 };
 
 #endif  // NRSLAM_MONOCULAR_MAP_INITIALIZER_H

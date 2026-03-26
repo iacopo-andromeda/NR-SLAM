@@ -88,7 +88,7 @@ class Tracking {
   // Map::RebaseWorldFrame: world_old_from_world_new.
   void RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new);
 
-  void Reset();
+  void Clear();
 
  private:
   void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,

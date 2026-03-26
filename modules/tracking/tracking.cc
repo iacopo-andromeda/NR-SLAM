@@ -141,7 +141,7 @@ void Tracking::TrackImage(
     if (current_frame_->GetKeypointsWithStatus({TRACKED_WITH_3D}).size() <
         options_.min_tracked_points_abort) {
       LOG(WARNING) << "Too few tracked points, aborting tracking";
-      Reset();
+      Clear();
       return;
     }
 
@@ -161,9 +161,9 @@ void Tracking::TrackImage(
   }
 }
 
-Tracking::Reset() {
+void Tracking::Clear() {
   tracking_status_ = NOT_INITIALIZED;
-  monocular_map_initializer_->Reset();
+  monocular_map_initializer_->Clear();
   current_frame_ = make_shared<Frame>();
   map_->Clear();
 
@@ -480,6 +480,7 @@ void Tracking::PointReuse(const cv::Mat& im, const cv::Mat& mask,
       LucasKanadeTracker::PhotometricInformation photometric_information =
           map_->GetMapPoint(mappoint_id)->GetPhotometricInformation();
       klt.InsertPhotometricInformation(keypoint, photometric_information);
+      // this is used in order to be able to later track points "from the past"
 
       keypoint_seeds.push_back(keypoint);
 

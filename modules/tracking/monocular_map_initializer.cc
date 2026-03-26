@@ -33,24 +33,38 @@ MonocularMapInitializer::MonocularMapInitializer(
     std::shared_ptr<ImageVisualizer> image_visualizer)
     : options_(options),
       feature_extractor_(feature_extractor),
-      image_visualizer_(image_visualizer) {
+      image_visualizer_(image_visualizer),
+      calibration_(calibration) {
   klt_tracker_ = LucasKanadeTracker(
       cv::Size(options_.klt_window_size, options_.klt_window_size),
       options_.klt_max_level, options_.klt_max_iters, options_.klt_epsilon,
       options_.klt_min_eig_th);
 
-  EssentialMatrixInitialization::Options essential_matrix_initializer_options;
-  essential_matrix_initializer_options.max_features =
+  essential_matrix_initializer_options_.max_features =
       options_.rigid_initializer_max_features;
-  essential_matrix_initializer_options.min_parallax =
+  essential_matrix_initializer_options_.min_parallax =
       options_.rigid_initializer_min_parallax;
-  essential_matrix_initializer_options.epipolar_threshold =
+  essential_matrix_initializer_options_.epipolar_threshold =
       options_.rigid_initializer_epipolar_threshold;
   rigid_initializer_ = make_unique<EssentialMatrixInitialization>(
-      essential_matrix_initializer_options, calibration, image_visualizer);
+      essential_matrix_initializer_options_, calibration_, image_visualizer_);
 
-  calibration_ = calibration;
+  internal_status_ = NO_DATA;
+}
+void MonocularMapInitializer::Clear() {
+  klt_tracker_ = LucasKanadeTracker(
+      cv::Size(options_.klt_window_size, options_.klt_window_size),
+      options_.klt_max_level, options_.klt_max_iters, options_.klt_epsilon,
+      options_.klt_min_eig_th);
 
+  feature_tracks_ = FeatureTracks();
+  current_keypoints_.clear();
+  current_keypoint_statuses_.clear();
+  images_from_last_reference_ = 0;
+
+  rigid_initializer_ = make_unique<EssentialMatrixInitialization>(
+      essential_matrix_initializer_options_, calibration_, image_visualizer_);
+  n_tracks_in_image_ = 0;
   internal_status_ = NO_DATA;
 }
 
