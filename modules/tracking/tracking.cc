@@ -115,6 +115,7 @@ void Tracking::TrackImage(
   map_->SetAllMappointsToNonActive();
 
   if (map_->IsEmpty()) {
+    LOG(INFO) << "Status: NOT INITIALIZED";
     // If map is not initialized, perform map initialization.
 
     // For stereo experiment purposes.
@@ -124,6 +125,7 @@ void Tracking::TrackImage(
     MonocularMapInitialization(im, masks.at("Global"));
     // MonocularMapInitialization(im, masks.at("PredefinedFilter"), im_clahe);
   } else {
+    LOG(INFO) << "Status: INITIALIZED";
     // Update photometric info for points triangulated by the mapping in the
     // last frame.
     UpdateTriangulatedPoints();
@@ -181,18 +183,6 @@ void Tracking::ExtractFeatures(
     std::vector<cv::KeyPoint>& new_keypoints) {
   // Extract features.
   feature_extractor_->Extract(im, mask, new_keypoints);
-
-  // // Mask out points.
-  // vector<cv::KeyPoint> masked_keypoints;
-  // for (size_t i = 0; i < keypoints.size(); i++) {
-  //   if (!mask.at<uchar>(keypoints[i].pt)) {
-  //     continue;
-  //   } else {
-  //     masked_keypoints.push_back(keypoints[i]);
-  //   }
-  // }
-
-  // keypoints = masked_keypoints;
 }
 
 void Tracking::MonocularMapInitialization(const cv::Mat& im,
@@ -219,8 +209,11 @@ void Tracking::MonocularMapInitialization(const cv::Mat& im,
   const int median_idx = depths.size() / 2;
   nth_element(depths.begin(), depths.begin() + median_idx, depths.end());
   const float median_depth = depths[median_idx];
-  const float scale = 3.f / median_depth;
+  const float scale = 1.f / median_depth;
   map_->SetMapScale(scale);
+  LOG(WARNING) << "Map scale is 1.0/median for monocular initialization. Was "
+                  "3. median_depth="
+               << median_depth << " scale=" << scale;
 
   float sigma = Sigma(depths);
   float sigma_scaled = sigma * scale;
@@ -286,7 +279,11 @@ void Tracking::MonocularMapInitialization(const cv::Mat& im,
     map_->GetMapPoint(mappoint_id)
         ->SetPhotometricInformation(photometric_information);
   }
-
+  LOG(INFO) << "Started tracking";
+  LOG(INFO) << "Reference points: "
+            << initialization_results.reference_keypoints.size();
+  LOG(INFO) << "Current points: "
+            << initialization_results.current_keypoints.size();
   tracking_status_ = TRACKING;
 }
 
@@ -294,8 +291,10 @@ absl::flat_hash_set<ID> Tracking::TrackCameraAndDeformation(
     const cv::Mat& im, const cv::Mat& mask) {
   DataAssociation(im, mask);
 
+  // Coarse camera pose estimation.
   CameraPoseEstimation();
 
+  // Deformation + camera pose estimation.
   auto lost_ids = CameraPoseAndDeformationEstimation();
 
   return lost_ids;
@@ -309,6 +308,7 @@ void Tracking::DataAssociation(const cv::Mat& im, const cv::Mat& mask) {
 
 void Tracking::CameraPoseEstimation() {
   // Apply motion model to get a first seed of the current camera pose.
+  LOG(INFO) << "Previous frame motion model: " << motion_model_.matrix();
   current_frame_->MutableCameraTransformationWorld() =
       motion_model_ * current_frame_->CameraTransformationWorld();
 
@@ -329,6 +329,7 @@ absl::flat_hash_set<ID> Tracking::CameraPoseAndDeformationEstimation() {
   // Update motion model.
   motion_model_ = current_frame_->CameraTransformationWorld() *
                   map_->GetLastFrame().CameraTransformationWorld().inverse();
+  LOG(INFO) << "New motion model: " << motion_model_.matrix();
 
   return lost_mappoint_ids;
 }
@@ -575,7 +576,7 @@ void Tracking::PointReuse(const cv::Mat& im, const cv::Mat& mask,
 
 void Tracking::UpdateTriangulatedPoints() {
   auto indices = current_frame_->GetIndexWithStatus({JUST_TRIANGULATED});
-
+  LOG(INFO) << "Points updated from mapping: " << indices.size();
   for (auto index : indices) {
     LucasKanadeTracker::PhotometricInformation photometric_information =
         klt_tracker_.GetPhotometricInformationOfPoint(index);

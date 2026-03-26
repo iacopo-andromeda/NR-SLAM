@@ -407,7 +407,7 @@ void Mapping::LandmarkTriangulation() {
 absl::StatusOr<Eigen::Vector3f> Mapping::DeformableLandmarkTriangulation(
     const int candidate_id) {
   return DeformableTriangulation(*map_->GetTemporalBuffer(), candidate_id,
-                                 calibration_, 1.f);
+                                 calibration_);
 }
 
 void Mapping::UpdateTrackingFrameFromKeyFrame(
