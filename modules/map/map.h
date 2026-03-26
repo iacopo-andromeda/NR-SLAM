@@ -87,6 +87,11 @@ class Map {
 
   float GetMapScale();
 
+  // Re-express all map geometry and camera poses in a new world frame.
+  // The input transform maps points from new-world to old-world coordinates.
+  //  p_old = world_old_from_world_new * p_new
+  void RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new);
+
  private:
   // Mappings of the KeyFrame/MapPoint ids and the KeyFrame/MapPoint itself.
   absl::flat_hash_map<ID, std::shared_ptr<MapPoint>> mappoints_;

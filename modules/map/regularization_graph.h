@@ -85,6 +85,10 @@ class RegularizationGraph {
 
   float GetMinWeightAllowed();
 
+  // Applies a rotation to all stored relative vectors when world coordinates
+  // are re-expressed in another frame.
+  void RotateRelativeVectors(const Eigen::Matrix3f& rotation);
+
  private:
   absl::btree_map<ID, VertexConnections> graph_;
 

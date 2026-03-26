@@ -63,6 +63,11 @@ class Settings {
 
   std::string GetEvaluationPath();
 
+  // Override the three output directories derived from a single root.
+  // Equivalent to setting MapVisualizer.save_path, ImageVisualizer.save_path,
+  // and Evaluation.save_path in the YAML, but takes precedence over them.
+  void OverrideOutputDir(const std::string& dir);
+
   int GetLostBootstrapFrameStride();
 
   int GetTriangulationTrackLookbackFrames();

@@ -22,6 +22,7 @@
 #include <fstream>
 #include <mutex>
 #include <opencv2/imgcodecs.hpp>
+#include <optional>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <vector>
 
@@ -35,23 +36,48 @@
 #include "absl/log/log_sink.h"
 #include "absl/log/log_sink_registry.h"
 #include "cpp_bag_reader/bag_reader.hpp"
+#include "m31_interfaces/msg/robot_state.hpp"
+#include "sophus/se3.hpp"
 
 using namespace std;
 
+// ---------------------------------------------------------------------------
+// Decode a 7-element base_cam pose vector into Sophus::SE3f.
+// Convention: [tx, ty, tz, qx, qy, qz, qw]  (standard ROS geometry_msgs)
+// ---------------------------------------------------------------------------
+Sophus::SE3f PoseFromBaseCam(const std::array<double, 7>& v) {
+  const Eigen::Vector3f t(static_cast<float>(v[0]), static_cast<float>(v[1]),
+                          static_cast<float>(v[2]));
+  // Eigen Quaternionf constructor order: (qw, qx, qy, qz)
+  Eigen::Quaternionf q(static_cast<float>(v[6]),   // qw
+                       static_cast<float>(v[3]),   // qx
+                       static_cast<float>(v[4]),   // qy
+                       static_cast<float>(v[5]));  // qz
+  return Sophus::SE3f(q.normalized(), t);
+}
+
+// Cached robot state with its bag timestamp.
+struct CachedPose {
+  uint64_t timestamp_ns{0};
+  Sophus::SE3f T_base_cam;  // camera pose in base frame
+  bool valid{false};
+};
+
 ABSL_FLAG(std::string, dataset_path,
-          "/home/galactus/Documents/robot-bags/rosbag2_13-02-2026_08-57-17",
+          "/home/galactus/Documents/robot-bags/rosbag2_13-02-2026_10-36-47",
           "Path to the video dataset");
 ABSL_FLAG(std::string, settings_path, "", "Path to the settings file");
-ABSL_FLAG(uint64_t, starting_frame, 1771001959417433296ULL,
+ABSL_FLAG(uint64_t, starting_frame, 1771007830779022374ULL,
           "Start bound. Interpreted per --range_mode.");
-ABSL_FLAG(uint64_t, end_frame, 1771002836540509598ULL,
+ABSL_FLAG(uint64_t, end_frame, 1771007832559881003ULL,
           "End bound. Interpreted per --range_mode. 0 means no end bound.");
 ABSL_FLAG(std::string, range_mode, "timestamp_ns",
           "How to interpret start/end: message_index or timestamp_ns");
 ABSL_FLAG(uint64_t, max_images, 200,
           "Maximum number of main-topic images to process. 0 means unlimited.");
-ABSL_FLAG(std::string, log_file, "slam_run.log",
-          "Path of the log file where all LOG() output is saved");
+ABSL_FLAG(std::string, output_dir, "/tmp/slam_out",
+          "Root directory for all run outputs: map renders, frame images, "
+          "evaluation CSVs, and slam.log");
 
 // ---------------------------------------------------------------------------
 // File sink: mirrors every absl log entry to a text file.
@@ -120,7 +146,8 @@ int main(int argc, char** argv) {
 
   // Register the file log sink so that every LOG(...) call is also written to
   // the log file (in addition to stderr).
-  const string log_file_path = absl::GetFlag(FLAGS_log_file);
+  const string output_dir = absl::GetFlag(FLAGS_output_dir);
+  const string log_file_path = output_dir + "/slam.log";
   FileSink file_sink(log_file_path);
   absl::AddLogSink(&file_sink);
 
@@ -134,6 +161,7 @@ int main(int argc, char** argv) {
   LOG(INFO) << "  main_topic     : " << kMainTopic;
   LOG(INFO) << "  secondary_topic: " << kSecondaryTopic;
   LOG(INFO) << "  log_file       : " << log_file_path;
+  LOG(INFO) << "  output_dir     : " << output_dir;
 
   cpp_bag_reader::BagReaderIterator iterator;
   const uint64_t open_start_ts = use_timestamp_mode ? starting_frame : 0;
@@ -146,12 +174,17 @@ int main(int argc, char** argv) {
   }
 
   // Create SLAM system.
-  System SLAM(settings_path);
+  System SLAM(settings_path, output_dir);
 
   uint64_t main_topic_count = 0;
   uint64_t tracked_image_count = 0;
   uint64_t secondary_topic_count = 0;
   uint64_t failed_decode_count = 0;
+  uint64_t pose_decode_failed_count = 0;
+
+  // Latest decoded robot state.  Updated every time a /robot/state message
+  // arrives; consumed when the next image is processed.
+  CachedPose cached_pose;
 
   for (const auto& message : iterator) {
     if (use_timestamp_mode && end_frame > 0 &&
@@ -161,6 +194,18 @@ int main(int argc, char** argv) {
 
     if (message.topic_name == kSecondaryTopic) {
       ++secondary_topic_count;
+
+      // Decode robot state and cache the camera pose.
+      m31_interfaces::msg::RobotState robot_state;
+      if (!cpp_bag_reader::deserialize_message(message, robot_state)) {
+        ++pose_decode_failed_count;
+        LOG(WARNING) << "Failed to deserialize RobotState at ts="
+                     << message.timestamp_ns;
+      } else {
+        cached_pose.T_base_cam = PoseFromBaseCam(robot_state.base_cam);
+        cached_pose.timestamp_ns = message.timestamp_ns;
+        cached_pose.valid = true;
+      }
       continue;
     }
 
@@ -198,9 +243,27 @@ int main(int argc, char** argv) {
       continue;
     }
 
+    // Log the associated camera pose for this frame.
+    if (!cached_pose.valid) {
+      LOG(WARNING) << "Processing main topic message idx=" << current_main_index
+                   << " ts=" << message.timestamp_ns
+                   << " (no camera pose available yet). Skipping frame.";
+      continue;
+    }
+
+    const auto& t = cached_pose.T_base_cam.translation();
+    const auto& q = cached_pose.T_base_cam.unit_quaternion();
+    const int64_t dt_ns = static_cast<int64_t>(message.timestamp_ns) -
+                          static_cast<int64_t>(cached_pose.timestamp_ns);
     LOG(INFO) << "Processing main topic message idx=" << current_main_index
-              << " ts=" << message.timestamp_ns;
-    SLAM.TrackImage(image);
+              << " ts=" << message.timestamp_ns
+              << " pose_ts=" << cached_pose.timestamp_ns
+              << " pose_dt_ms=" << (dt_ns / 1'000'000) << " t=[" << t.x() << ","
+              << t.y() << "," << t.z() << "]"
+              << " q=[" << q.x() << "," << q.y() << "," << q.z() << "," << q.w()
+              << "]";
+
+    SLAM.TrackImage(image, cached_pose.T_base_cam);
     ++tracked_image_count;
 
     if (max_images > 0 && tracked_image_count >= max_images) {
@@ -221,6 +284,7 @@ int main(int argc, char** argv) {
   LOG(INFO) << "  images_tracked           : " << tracked_image_count;
   LOG(INFO) << "  secondary_topic_messages : " << secondary_topic_count;
   LOG(INFO) << "  decode_failures          : " << failed_decode_count;
+  LOG(INFO) << "  pose_decode_failures     : " << pose_decode_failed_count;
 
   // Unregister the sink before it goes out of scope (required by absl).
   absl::RemoveLogSink(&file_sink);

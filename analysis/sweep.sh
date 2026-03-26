@@ -5,7 +5,8 @@
 #   config.yaml          – copy of data/andromeda/settings.yaml with overrides
 #   stdout.log           – combined stdout + stderr (tee'd)
 #   slam.log             – absl log file written by the binary
-#   slam_performance.csv – per-frame CSV copied from the workspace root
+#   slam_performance.csv – per-frame performance CSV written directly here
+#   pose_comparison.csv  – per-frame pose comparison CSV written directly here
 #
 # Results are appended to /tmp/slam_out/summary.txt as each run completes.
 set -euo pipefail
@@ -24,8 +25,6 @@ mkdir -p "$OUT_ROOT"
 # make_config <name> [Key: value ...]
 #   Creates $OUT_ROOT/<name>/config.yaml from a copy of the base YAML.
 #   Then applies each "Key: value" override using sed on the copy.
-#   Also rewrites the three *Visualizer/Evaluation save_path entries so
-#   visualizations/evaluations land inside the experiment folder.
 # ---------------------------------------------------------------------------
 make_config() {
     local name="$1"; shift
@@ -33,11 +32,6 @@ make_config() {
     mkdir -p "$dir"
     local cfg="$dir/config.yaml"
     cp "$BASE_YAML" "$cfg"
-
-    # Per-experiment output paths (safe to override even if parser ignores them)
-    sed -i "s|MapVisualizer\.save_path:.*|MapVisualizer.save_path: \"$dir/map_viz/\"|" "$cfg"
-    sed -i "s|ImageVisualizer\.save_path:.*|ImageVisualizer.save_path: \"$dir/viz/\"|"  "$cfg"
-    sed -i "s|Evaluation\.save_path:.*|Evaluation.save_path: \"$dir/eval/\"|"           "$cfg"
 
     # Apply caller-supplied overrides: each arg is "Key: value"
     for kv in "$@"; do
@@ -71,19 +65,13 @@ run_exp() {
     echo " Config     : $cfg"
     echo "========================================================"
 
-    # Remove the workspace-root CSV so we can clearly detect a fresh one
-    rm -f "$WDIR/slam_performance.csv"
-
     "$BIN" \
         --dataset_path "$DATASET" \
         --settings_path "$cfg" \
         --starting_frame 0 \
         --end_frame 1000 \
-        --log_file "$dir/slam.log" \
+        --output_dir "$dir" \
         |& tee "$dir/stdout.log" || true
-
-    # Copy the per-run CSV into the experiment folder
-    [ -f "$WDIR/slam_performance.csv" ] && cp "$WDIR/slam_performance.csv" "$dir/slam_performance.csv"
 
     # Extract summary numbers from stdout.log
     local tracking_pct lost_pct init_pct

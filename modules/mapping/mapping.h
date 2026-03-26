@@ -34,7 +34,7 @@ class Mapping {
   Mapping(std::shared_ptr<Map> map, std::shared_ptr<CameraModel> calibration,
           const Options options, TimeProfiler* time_profiler);
 
-  void DoMapping();
+  void DoMapping(const Sophus::SE3f& external_camera_pose);
 
  private:
   void KeyFrameMapping();

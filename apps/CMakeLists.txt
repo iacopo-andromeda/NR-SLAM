@@ -4,6 +4,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 find_package(OpenCV 4 REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(m31_interfaces REQUIRED)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_BINARY_DIR}
@@ -20,4 +21,4 @@ set(NR_SLAM_MODULE_LINK_GROUP
 
 set(PROGRAM_NAME andromeda)
 add_executable(${PROGRAM_NAME} andromeda.cc)
-target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status absl::log_sink_registry sensor_msgs::sensor_msgs_library cpp_bag_reader ${NR_SLAM_MODULE_LINK_GROUP})
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} absl::log absl::log_flags absl::flags_parse absl::check absl::status absl::log_sink_registry sensor_msgs::sensor_msgs_library m31_interfaces::m31_interfaces__rosidl_typesupport_cpp cpp_bag_reader ${NR_SLAM_MODULE_LINK_GROUP})

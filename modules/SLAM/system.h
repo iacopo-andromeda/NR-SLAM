@@ -21,6 +21,7 @@
 #ifndef NRSLAM_SYSTEM_H
 #define NRSLAM_SYSTEM_H
 
+#include <fstream>
 #include <memory>
 #include <thread>
 
@@ -40,12 +41,14 @@ class System {
  public:
   System() = delete;
 
-  System(const std::string settings_file_path);
+  System(const std::string settings_file_path,
+         const std::string output_dir = "");
 
   ~System();
 
-  // Tracks an image using the monocular pipeline
-  void TrackImage(const cv::Mat& im);
+  // Tracks an image using monocular pipeline and external camera pose
+  // (e.g. decoded from ROS).
+  void TrackImage(const cv::Mat& im, const Sophus::SE3f& external_camera_pose);
 
   // Tracks the next image using some stereo information:
   //  - For stereo map initialization
@@ -87,6 +90,13 @@ class System {
 
   // Path where the per-frame CSV will be written.
   std::string perf_log_csv_path_;
+
+  // Path and stream for external-vs-SLAM pose comparison CSV.
+  std::string pose_cmp_csv_path_;
+  std::ofstream pose_cmp_csv_;
+
+  // One-time gauge alignment: rebase SLAM world to external base frame.
+  bool world_aligned_to_external_ = false;
 };
 
 #endif  // NRSLAM_SYSTEM_H

@@ -215,3 +215,69 @@ void Map::SetAllMappointsToNonActive() {
 void Map::SetMapScale(const float scale) { map_scale_ = scale; }
 
 float Map::GetMapScale() { return map_scale_; }
+
+void Map::RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new) {
+  const Sophus::SE3f world_new_from_world_old =
+      world_old_from_world_new.inverse();
+
+  // MapPoints (world positions).
+  for (auto& [mappoint_id, mappoint] : mappoints_) {
+    (void)mappoint_id;
+    Eigen::Vector3f position_old = mappoint->GetLastWorldPosition();
+    Eigen::Vector3f position_new = world_new_from_world_old * position_old;
+    mappoint->SetLastWorldPosition(position_new);
+  }
+
+  // KeyFrames (camera poses + cached landmark positions).
+  for (auto& [keyframe_id, keyframe] : keyframes_) {
+    (void)keyframe_id;
+    keyframe->CameraTransformationWorld() =
+        keyframe->CameraTransformationWorld() * world_old_from_world_new;
+
+    auto& keyframe_landmarks = keyframe->LandmarkPositions();
+    for (auto& landmark_position : keyframe_landmarks) {
+      if (landmark_position.hasNaN()) {
+        continue;
+      }
+      landmark_position = world_new_from_world_old * landmark_position;
+    }
+  }
+
+  // Last frame (camera pose + cached landmark positions).
+  if (last_frame_) {
+    last_frame_->MutableCameraTransformationWorld() =
+        last_frame_->CameraTransformationWorld() * world_old_from_world_new;
+
+    auto& frame_landmarks = last_frame_->LandmarkPositions();
+    for (auto& landmark_position : frame_landmarks) {
+      if (landmark_position.hasNaN()) {
+        continue;
+      }
+      landmark_position = world_new_from_world_old * landmark_position;
+    }
+
+    frame_to_render_ = *last_frame_;
+  }
+
+  // Temporal buffer snapshots.
+  auto& raw_buffer = temporal_buffer_->GetRawBuffer();
+  for (auto& [snapshot_id, snapshot] : raw_buffer) {
+    (void)snapshot_id;
+    snapshot.camera_transform_world =
+        snapshot.camera_transform_world * world_old_from_world_new;
+
+    for (auto& [track_id, track_record] : snapshot.tracks) {
+      (void)track_id;
+      if (track_record.landmark_position.hasNaN()) {
+        continue;
+      }
+      track_record.landmark_position =
+          world_new_from_world_old * track_record.landmark_position;
+    }
+  }
+
+  // Regularization edge vectors are world-frame relative vectors and must be
+  // rotated to stay consistent after world-frame re-expression.
+  regularization_graph_->RotateRelativeVectors(
+      world_new_from_world_old.so3().matrix());
+}

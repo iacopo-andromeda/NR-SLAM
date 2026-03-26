@@ -279,3 +279,15 @@ void RegularizationGraph::GetOptimizationNeighbours(
 }
 
 float RegularizationGraph::GetMinWeightAllowed() { return min_weight_; }
+
+void RegularizationGraph::RotateRelativeVectors(
+    const Eigen::Matrix3f& rotation) {
+  for (auto& [vertex_id, connections] : graph_) {
+    for (auto& [other_vertex_id, edge] : connections) {
+      if (vertex_id > other_vertex_id) {
+        continue;
+      }
+      edge->last_relative_position = rotation * edge->last_relative_position;
+    }
+  }
+}

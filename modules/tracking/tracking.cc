@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
@@ -34,6 +35,22 @@
 using namespace std;
 
 namespace {
+struct PoseComparisonMetrics {
+  float translation_error_m = 0.f;
+  float rotation_error_deg = 0.f;
+};
+
+PoseComparisonMetrics ComputePoseComparison(const Sophus::SE3f& external_pose,
+                                            const Sophus::SE3f& slam_pose) {
+  const Sophus::SE3f delta = external_pose * slam_pose.inverse();
+  PoseComparisonMetrics metrics;
+  metrics.translation_error_m = delta.translation().norm();
+  const Eigen::AngleAxisf aa(delta.so3().matrix());
+  constexpr float kRadToDeg = 57.29577951308232f;
+  metrics.rotation_error_deg = std::abs(aa.angle()) * kRadToDeg;
+  return metrics;
+}
+
 MonocularMapInitializer::Options BuildMonocularInitializerOptions(
     const Tracking::Options& options) {
   MonocularMapInitializer::Options monocular_map_initializer_options;
@@ -93,12 +110,21 @@ Tracking::Tracking(const Tracking::Options options, std::shared_ptr<Map> map,
 }
 
 void Tracking::TrackImage(
-    const cv::Mat& im, const absl::flat_hash_map<std::string, cv::Mat>& masks) {
+    const cv::Mat& im, const absl::flat_hash_map<std::string, cv::Mat>& masks,
+    const Sophus::SE3f& external_camera_pose) {
   map_->SetAllMappointsToNonActive();
 
   static uint64_t frame_seq = 0;
   const uint64_t frame_id = frame_seq++;
   const auto t_frame_start = std::chrono::steady_clock::now();
+
+  auto log_pose_comparison = [&](const char* stage) {
+    const auto pose_metrics = ComputePoseComparison(
+        external_camera_pose, current_frame_->CameraTransformationWorld());
+    LOG(INFO) << "[POSE_CMP_TRACKING] frame=" << frame_id << " stage=" << stage
+              << " trans_err=" << pose_metrics.translation_error_m
+              << " rot_err_deg=" << pose_metrics.rotation_error_deg;
+  };
 
   const bool map_is_empty = map_->IsEmpty();
 
@@ -114,6 +140,7 @@ void Tracking::TrackImage(
         (frame_id % options_.lost_bootstrap_frame_stride) != 0) {
       LOG(INFO) << "[LOST] Bootstrap stride skip: frame=" << frame_id
                 << " stride=" << options_.lost_bootstrap_frame_stride;
+      log_pose_comparison("lost_stride_skip");
       return;
     }
 
@@ -186,6 +213,7 @@ void Tracking::TrackImage(
 
       LOG(WARNING)
           << "Tracking switched to LOST; re-seeded features for recovery";
+      log_pose_comparison("tracking_abort");
       return;
     }
 
@@ -216,6 +244,8 @@ void Tracking::TrackImage(
       image_visualizer_->DrawFeatures(current_frame_->Keypoints());
     }
   }
+
+  log_pose_comparison("end");
 }
 
 Tracking::TrackingStatus Tracking::GetTrackingStatus() const {

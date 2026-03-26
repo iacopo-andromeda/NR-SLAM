@@ -1,5 +1,8 @@
 # NR-SLAM Agent Context (Andromeda-first)
 
+> Canonical unified documentation now lives in `README.md`.
+> Keep this file only as a compatibility reference and avoid updating it independently.
+
 Purpose: provide a compact, high-signal context file for coding agents working on this repository.
 This document keeps both (1) theoretical/paper context and (2) current code reality, with drift notes where they differ.
 
@@ -74,7 +77,10 @@ Primary implementation: `apps/andromeda.cc`.
 - `--starting_frame` and `--end_frame`: interpreted by `--range_mode`.
 - `--range_mode`: `timestamp_ns` (default) or `message_index`.
 - `--max_images`: max processed main-topic images; `0` means unlimited.
-- `--log_file`: absl logs mirrored to this file by `FileSink`.
+- `--output_dir`: root directory for all run outputs.  The binary writes
+  `slam.log` here and passes this path to `System`, which derives
+  `{output_dir}/map_viz/`, `{output_dir}/viz/`, and `{output_dir}/eval/`.
+  Replaces the old `--log_file` flag and the three `*.save_path` YAML keys.
 
 ### Range semantics (important)
 
@@ -108,6 +114,7 @@ Primary implementation: `modules/SLAM/system.cc`.
   6. per-frame performance logging (`[PERF]`, CSV via `PerformanceLogger`).
 - `MapVisualizer` runs in its own thread.
 - Per-frame performance CSV currently defaults to `slam_performance.csv` in working directory.
+- Per-frame performance CSV (`slam_performance.csv`) and pose comparison CSV (`pose_comparison.csv`) are written to `output_dir` when provided, otherwise to the working directory.
 
 ## 6) Tracking Behavior That Recently Matters
 
@@ -131,7 +138,7 @@ Active groups used by current code:
 
 - Camera model/intrinsics (`Camera.*`, including `DistortedPinHole`).
 - Masking filter file (`Masking.filterFile`, e.g., `./data/andromeda/filters.txt`).
-- Visualization paths and views (`MapVisualizer.*`, `ImageVisualizer.*`).
+- Visualization paths and views (`MapVisualizer.*` views; save paths come from `--output_dir`).
 - Tracking/KLT parameters (`Tracking.klt_*`, keyframe cadence, stale-point pruning, LOST thresholds, etc.).
 - Feature extraction (`Features.max_corners`, `Features.quality_level`, `Features.min_distance`).
 
@@ -266,24 +273,7 @@ When an agent starts a task, read in this order:
 
 ## 11) Known Good Commands (Andromeda)
 
-Build:
-
-```bash
-./build.sh --target andromeda
-```
-
-Run example:
-
-```bash
-./build/bin/andromeda \
-  --dataset_path /home/galactus/Documents/robot-bags/rosbag2_13-02-2026_08-57-17 \
-  --settings_path ./data/andromeda/settings.yaml \
-  --starting_frame 1771001959417433296 \
-  --end_frame 1771002836540509598 \
-  --range_mode timestamp_ns \
-  --max_images 200 \
-  --log_file slam_run.log
-```
+refer to README.MD
 
 ## 12) Maintenance Rules for This File
 

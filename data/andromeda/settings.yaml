@@ -81,11 +81,6 @@ Features.quality_level: 0.1
 # Minimum Euclidean distance between detected corners (pixels).
 Features.min_distance: 7.0
 
-# Set the below variables to valid paths to save outputs
-MapVisualizer.save_path: "/tmp/slam_out/map_viz/"
-ImageVisualizer.save_path: "/tmp/slam_out/viz/"
-Evaluation.save_path: "/tmp/slam_out/eval/"
-
 MapVisualizer.left_view: !!opencv-matrix
   rows: 4
   cols: 4

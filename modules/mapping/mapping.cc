@@ -21,6 +21,7 @@
 #include "mapping.h"
 
 #include <chrono>
+#include <cmath>
 #include <fstream>
 
 #include "absl/container/flat_hash_map.h"
@@ -31,6 +32,24 @@
 
 using namespace std;
 
+namespace {
+struct PoseComparisonMetrics {
+  float translation_error_m = 0.f;
+  float rotation_error_deg = 0.f;
+};
+
+PoseComparisonMetrics ComputePoseComparison(const Sophus::SE3f& external_pose,
+                                            const Sophus::SE3f& slam_pose) {
+  const Sophus::SE3f delta = external_pose * slam_pose.inverse();
+  PoseComparisonMetrics metrics;
+  metrics.translation_error_m = delta.translation().norm();
+  const Eigen::AngleAxisf aa(delta.so3().matrix());
+  constexpr float kRadToDeg = 57.29577951308232f;
+  metrics.rotation_error_deg = std::abs(aa.angle()) * kRadToDeg;
+  return metrics;
+}
+}  // namespace
+
 Mapping::Mapping(std::shared_ptr<Map> map,
                  std::shared_ptr<CameraModel> calibration,
                  const Options options, TimeProfiler* time_profiler)
@@ -39,13 +58,15 @@ Mapping::Mapping(std::shared_ptr<Map> map,
       calibration_(calibration),
       time_profiler_(time_profiler) {}
 
-void Mapping::DoMapping() {
+void Mapping::DoMapping(const Sophus::SE3f& external_camera_pose) {
   if (map_->IsEmpty()) {
+    LOG(INFO) << "[POSE_CMP_MAPPING] status=map_empty has_external_pose=1";
     return;
   }
 
   // Get next KeyFrame to process
   auto keyframe = map_->GetNextUnmappedKeyFrame();
+  const char* mapping_stage = "frame";
 
   if (keyframe) {
     // If the KeyFrame is valid, do KeyFrame mapping.
@@ -53,9 +74,23 @@ void Mapping::DoMapping() {
 
     // Update tracking frame with the optimized KeyFrame.
     UpdateTrackingFrameFromKeyFrame(keyframe);
+    mapping_stage = "keyframe";
   } else {
     // If there is no KeyFrame to process, do Frame mapping.
     FrameMapping();
+  }
+
+  auto current_frame = map_->GetMutableLastFrame();
+  if (!current_frame) {
+    LOG(INFO) << "[POSE_CMP_MAPPING] stage=" << mapping_stage
+              << " status=no_slam_pose";
+  } else {
+    const auto pose_metrics = ComputePoseComparison(
+        external_camera_pose, current_frame->CameraTransformationWorld());
+    LOG(INFO) << "[POSE_CMP_MAPPING] frame=" << current_frame->GetId()
+              << " stage=" << mapping_stage
+              << " trans_err=" << pose_metrics.translation_error_m
+              << " rot_err_deg=" << pose_metrics.rotation_error_deg;
   }
 }
 
@@ -111,8 +146,8 @@ void Mapping::LandmarkTriangulation() {
   vector<ID> landmark_ids_triangulated;
   for (auto candidate_id : triangulation_candidate_ids) {
     // Check there are no close features.
-    auto neighbour_ids = temporal_buffer->GetClosestMapPointsToFeature(
-        candidate_id, 10, 20, 60);
+    auto neighbour_ids =
+        temporal_buffer->GetClosestMapPointsToFeature(candidate_id, 10, 20, 60);
     if (neighbour_ids.empty()) {
       n_rejected_close_features++;
       deformable_triangulations[candidate_id] =

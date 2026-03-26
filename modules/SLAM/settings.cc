@@ -170,22 +170,22 @@ Settings::Settings(const std::string& configFile) {
   map_visualizer_save_path_ =
       readParameter<string>(fSettings, "MapVisualizer.save_path", found, true);
   if (!found) {
-    LOG(ERROR) << "Parameter MapVisualizer.save_path not found";
-    exit(-1);
+    LOG(WARNING)
+        << "MapVisualizer.save_path not in settings; set via --output_dir";
   }
 
   image_visualizer_save_path_ = readParameter<string>(
       fSettings, "ImageVisualizer.save_path", found, true);
   if (!found) {
-    LOG(ERROR) << "Parameter ImageVisualizer.save_path not found";
-    exit(-1);
+    LOG(WARNING)
+        << "ImageVisualizer.save_path not in settings; set via --output_dir";
   }
 
   evaluation_save_path_ =
       readParameter<string>(fSettings, "Evaluation.save_path", found, true);
   if (!found) {
-    LOG(ERROR) << "Parameter Evaluation.save_path not found";
-    exit(-1);
+    LOG(WARNING)
+        << "Evaluation.save_path not in settings; set via --output_dir";
   }
 
   cv::FileNode lost_stride_node =
@@ -331,6 +331,12 @@ std::string Settings::GetImageVisualizerPath() {
 }
 
 std::string Settings::GetEvaluationPath() { return evaluation_save_path_; }
+
+void Settings::OverrideOutputDir(const std::string& dir) {
+  map_visualizer_save_path_ = dir + "/map_viz/";
+  image_visualizer_save_path_ = dir + "/viz/";
+  evaluation_save_path_ = dir + "/eval/";
+}
 
 int Settings::GetLostBootstrapFrameStride() {
   return lost_bootstrap_frame_stride_;

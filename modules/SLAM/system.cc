@@ -21,13 +21,33 @@
 #include "system.h"
 
 #include <chrono>
+#include <cmath>
+#include <iomanip>
 
 #include "absl/log/log.h"
 #include "utilities/landmark_status.h"
 
 using namespace std;
 
-System::System(const string settings_file_path) {
+namespace {
+struct PoseComparisonMetrics {
+  float translation_error_m = 0.f;
+  float rotation_error_deg = 0.f;
+};
+
+PoseComparisonMetrics ComputePoseComparison(const Sophus::SE3f& external_pose,
+                                            const Sophus::SE3f& slam_pose) {
+  const Sophus::SE3f delta = external_pose * slam_pose.inverse();
+  PoseComparisonMetrics metrics;
+  metrics.translation_error_m = delta.translation().norm();
+  const Eigen::AngleAxisf aa(delta.so3().matrix());
+  constexpr float kRadToDeg = 57.29577951308232f;
+  metrics.rotation_error_deg = std::abs(aa.angle()) * kRadToDeg;
+  return metrics;
+}
+}  // namespace
+
+System::System(const string settings_file_path, const string output_dir) {
   // Output welcome message
   LOG(INFO).NoPrefix() << "NR-SLAM Copyright (C) Copyright (C) 2022-2023 Juan "
                           "J. Gómez Rodríguez, José M.M. Montiel and Juan D. "
@@ -38,6 +58,9 @@ System::System(const string settings_file_path) {
   LOG(INFO).NoPrefix() << "under certain conditions. See LICENSE.txt.";
 
   settings_ = make_unique<Settings>(settings_file_path);
+  if (!output_dir.empty()) {
+    settings_->OverrideOutputDir(output_dir);
+  }
   LOG(INFO) << *settings_;
 
   // Initialize image processing stuff
@@ -139,10 +162,22 @@ System::System(const string settings_file_path) {
       stereo_pattern_matcher_, map_visualizer_.get());
 
   // Initialize performance logger.
-  perf_log_csv_path_ = "slam_performance.csv";
+  const string csv_prefix = output_dir.empty() ? "" : output_dir + "/";
+  perf_log_csv_path_ = csv_prefix + "slam_performance.csv";
   perf_logger_ = make_unique<PerformanceLogger>();
   LOG(INFO) << "PerformanceLogger ready. CSV will be saved to: "
             << perf_log_csv_path_;
+
+  pose_cmp_csv_path_ = csv_prefix + "pose_comparison.csv";
+  pose_cmp_csv_.open(pose_cmp_csv_path_, std::ios::out | std::ios::trunc);
+  if (pose_cmp_csv_.is_open()) {
+    pose_cmp_csv_ << "frame,status,trans_err,rot_err_deg\n";
+    pose_cmp_csv_ << std::fixed << std::setprecision(6);
+    LOG(INFO) << "Pose comparison CSV will be saved to: " << pose_cmp_csv_path_;
+  } else {
+    LOG(WARNING) << "Could not open pose comparison CSV at: "
+                 << pose_cmp_csv_path_;
+  }
 }
 
 System::~System() {
@@ -152,6 +187,10 @@ System::~System() {
     perf_logger_->SaveToCSV(perf_log_csv_path_);
   }
 
+  if (pose_cmp_csv_.is_open()) {
+    pose_cmp_csv_.close();
+  }
+
   // Send signal to the visualizer to finish
   map_visualizer_->SetFinish();
 
@@ -159,7 +198,8 @@ System::~System() {
   map_visualizer_thread_->join();
 }
 
-void System::TrackImage(const cv::Mat& im) {
+void System::TrackImage(const cv::Mat& im,
+                        const Sophus::SE3f& external_camera_pose) {
   const auto t_frame_start = std::chrono::steady_clock::now();
   const uint64_t frame_id = frame_counter_++;
 
@@ -176,13 +216,27 @@ void System::TrackImage(const cv::Mat& im) {
 
   // --- Tracking ---
   const auto t_tracking_start = std::chrono::steady_clock::now();
-  tracker_->TrackImage(processed_image, masks);
+  tracker_->TrackImage(processed_image, masks, external_camera_pose);
   const auto t_tracking_end = std::chrono::steady_clock::now();
 
   // --- Mapping ---
   const auto t_mapping_start = std::chrono::steady_clock::now();
-  mapper_->DoMapping();
+  mapper_->DoMapping(external_camera_pose);
   const auto t_mapping_end = std::chrono::steady_clock::now();
+
+  // One-time gauge fix: set SLAM world frame to external base frame by
+  // rebasing the whole map when both poses are available.
+  if (!world_aligned_to_external_) {
+    if (auto last_frame = map_->GetMutableLastFrame()) {
+      const Sophus::SE3f slam_pose = last_frame->CameraTransformationWorld();
+      const Sophus::SE3f world_old_from_world_new =
+          slam_pose.inverse() * external_camera_pose;
+      map_->RebaseWorldFrame(world_old_from_world_new);
+      world_aligned_to_external_ = true;
+      LOG(INFO) << "[POSE_ALIGN] Applied one-time world rebase to external "
+                << "base frame at frame=" << frame_id;
+    }
+  }
 
   // Draw images.
   if (image_visualizer_) image_visualizer_->UpdateWindows();
@@ -232,6 +286,24 @@ void System::TrackImage(const cv::Mat& im) {
   stats.ms_other = stats.ms_total - stats.ms_tracking - stats.ms_mapping;
   if (stats.ms_other < 0.0) {
     stats.ms_other = 0.0;
+  }
+
+  if (auto last_frame = map_->GetMutableLastFrame()) {
+    const auto pose_metrics = ComputePoseComparison(
+        external_camera_pose, last_frame->CameraTransformationWorld());
+    LOG(INFO) << "[POSE_CMP_SYSTEM] frame=" << frame_id
+              << " trans_err=" << pose_metrics.translation_error_m
+              << " rot_err_deg=" << pose_metrics.rotation_error_deg;
+    if (pose_cmp_csv_.is_open()) {
+      pose_cmp_csv_ << frame_id << ",ok," << pose_metrics.translation_error_m
+                    << "," << pose_metrics.rotation_error_deg << "\n";
+    }
+  } else {
+    LOG(INFO) << "[POSE_CMP_SYSTEM] frame=" << frame_id
+              << " status=no_slam_pose";
+    if (pose_cmp_csv_.is_open()) {
+      pose_cmp_csv_ << frame_id << ",no_slam_pose,,\n";
+    }
   }
 
   LOG(INFO) << "[PERF] frame=" << frame_id

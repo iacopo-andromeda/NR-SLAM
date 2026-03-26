@@ -78,9 +78,15 @@ class Tracking {
            TimeProfiler* time_profiler);
 
   void TrackImage(const cv::Mat& im,
-                  const absl::flat_hash_map<std::string, cv::Mat>& masks);
+                  const absl::flat_hash_map<std::string, cv::Mat>& masks,
+                  const Sophus::SE3f& external_camera_pose);
 
   TrackingStatus GetTrackingStatus() const;
+
+  // Rebases tracker-owned cached world-frame state after the map world frame
+  // changes. The transform follows the same convention as
+  // Map::RebaseWorldFrame: world_old_from_world_new.
+  void RebaseWorldFrame(const Sophus::SE3f& world_old_from_world_new);
 
  private:
   void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,

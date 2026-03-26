@@ -1,12 +1,15 @@
 # NR-SLAM: Paper-to-Code Traceability Document
 
+> Canonical unified documentation now lives in `README.md`.
+> Keep this file only as a detailed historical analysis snapshot.
+
 > **Paper:** "NR-SLAM: Non-Rigid Monocular SLAM"
 > **Authors:** Juan J. Gómez Rodríguez, José M.M. Montiel, Juan D. Tardós
 > **Repository:** [endomapper/NR-SLAM](https://github.com/endomapper/NR-SLAM)
-> **Date of analysis:** 2026-03-22
-> **Revision:** 4 (Andromeda-first refresh, runtime architecture correction, drift notes, and build-environment update)
+> **Date of analysis:** 2026-03-23
+> **Revision:** 5 (external-pose integration update, settings/defaults refresh, and architecture/runtime notes)
 
-> **Current-state note (2026-03-22):** This document now prioritizes the active code path in this workspace (`apps/andromeda.cc`). Where this differs from the paper narrative, the implementation is treated as source-of-truth and the mismatch is called out explicitly.
+> **Current-state note (2026-03-23):** This document prioritizes the active code path in this workspace (`apps/andromeda.cc`). Where this differs from the paper narrative, implementation is treated as source-of-truth and mismatches are called out explicitly.
 
 ---
 
@@ -16,7 +19,7 @@
 2. [Step 2: Codebase Survey](#step-2-codebase-survey)
 3. [Step 3: Paper → Code Section-by-Section Mapping](#step-3-paper--code-section-by-section-mapping)
 4. [Step 4: Mismatch & Gaps Analysis](#step-4-mismatch--gaps-analysis)
-5. [Step 6: How to Read the Code If You Read the Paper](#step-6-how-to-read-the-code-if-you-read-the-paper)
+5. [Step 5: How to Read the Code If You Read the Paper](#step-5-how-to-read-the-code-if-you-read-the-paper)
 
 ---
 
@@ -24,7 +27,7 @@
 
 | Level | Symbol | Meaning |
 |-------|--------|---------|
-| **HIGH** | 🟢 | Direct 1:1 correspondence verified with line numbers |
+| **HIGH** | 🟢 | Direct 1:1 correspondence in current snapshot |
 | **MEDIUM** | 🟡 | Conceptual match but with simplifications or restructuring |
 | **LOW** | 🟠 | Partially implemented or substantially different from paper |
 | **ABSENT** | 🔴 | Paper component not found in code |
@@ -231,17 +234,17 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 
 ### 2.2 Key Source Files (by importance)
 
-| File | Lines | Purpose |
+| File | Approx. lines (snapshot) | Purpose |
 |------|-------|---------|
-| `optimization/g2o_optimization.cc` | 1162 | All 4 main optimization functions |
-| `tracking/tracking.cc` | 522 | Full tracking pipeline |
-| `mapping/mapping.cc` | 271 | Mapping pipeline, triangulation |
-| `map/regularization_graph.cc` | 237 | DDG implementation |
+| `optimization/g2o_optimization.cc` | ~1160 | All 4 main optimization functions |
+| `tracking/tracking.cc` | ~520 | Full tracking pipeline |
+| `mapping/mapping.cc` | ~270 | Mapping pipeline, triangulation |
+| `map/regularization_graph.cc` | ~240 | DDG implementation |
 | `matching/lucas_kanade_tracker.cc` | ~632 | KLT with gain/bias + SSIM |
 | `optimization/*.cc` (10 files) | ~60 each | g2o edge type implementations |
 | `utilities/geometry_toolbox.cc` | ~100 | Weight computation, triangulation |
-| `SLAM/system.cc` | ~130 | Thread orchestration |
-| `build.sh` | ~90 | Build entrypoint; bootstraps ROS shell environment via `ros_setup` before CMake |
+| `SLAM/system.cc` | ~360 | Orchestration, performance logging, external-pose comparison, optional world alignment |
+| `build.sh` | ~100 | Build entrypoint; bootstraps ROS shell environment via `ros_setup` before CMake |
 
 ### 2.3 Dependencies and External Libraries
 
@@ -281,8 +284,17 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 | `Tracking.klt_min_eig_th` | 1e-4 | KLT min eigenvalue |
 | `Tracking.klt_min_SSIM` | 0.65 | SSIM rejection threshold |
 | `Tracking.images_to_insert_keyframe` | 5 | Frames between keyframe insertions |
+| `Tracking.stale_mappoint_max_age_frames` | 30 | Remove mappoints not observed for N frames |
 | `Tracking.lost_bootstrap_frame_stride` | 3 | LOST bootstrap subsampling factor |
-| `Tracking.min_tracked_points_abort` | 10 | Threshold to enter LOST mode |
+| `Tracking.min_tracked_points_abort` | 8 (Andromeda YAML), 10 (code default) | Threshold to enter LOST mode |
+| `Tracking.lost_recovery_grace_frames` | 5 | Grace frames after LOST recovery |
+| `Tracking.lost_recovery_min_tracked_points` | 8 (Andromeda YAML), 3 (code default) | Tracked-point threshold during grace period |
+| `Tracking.triangulation_track_lookback_frames` | 5 | Track history window for triangulation |
+| `Tracking.min_mappoint_distance` | 0.02 | Minimum distance gate for map points |
+| `Tracking.monocular_initializer.*` | see YAML | Startup and LOST re-bootstrap initializer parameters |
+| `Features.max_corners` | 1000 | Max Shi-Tomasi corners |
+| `Features.quality_level` | 0.1 | Shi-Tomasi quality level |
+| `Features.min_distance` | 7.0 | Minimum feature spacing |
 
 ---
 
@@ -472,9 +484,9 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 | Field | Detail |
 |-------|--------|
 | **Paper Ref** | Figure 2: Three-thread architecture (Tracking, Mapping, Visualization) |
-| **Code Ref** | `modules/SLAM/system.cc`: `TrackImage()` executes tracking then mapping in one call path; only `MapVisualizer::Run()` is launched in a separate thread |
+| **Code Ref** | `modules/SLAM/system.cc`: `TrackImage()` executes tracking then mapping in one call path; only `MapVisualizer::Run()` is launched in a separate thread. `apps/andromeda.cc` optionally passes external camera pose into `System::TrackImage(...)`. |
 | **Integration** | `system.h` orchestrates `Tracking`, `Mapping`, and visualization around a shared `Map` |
-| **Explanation** | Current implementation differs from Figure 2: tracking and mapping are sequential per frame; visualization is threaded. |
+| **Explanation** | Current implementation differs from Figure 2: tracking and mapping are sequential per frame; visualization is threaded. The runtime also supports optional external pose ingestion and logs pose-comparison metrics per frame. |
 | **Confidence** | 🟡 **MEDIUM** — Conceptual match at module level, but not thread-level parity with the paper diagram. |
 
 ---
@@ -539,6 +551,9 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 | **Photometric information storage** | `tracking.cc:203–208, 426–430` | KLT patches stored per map point for mid-term re-tracking. | Enables persistent appearance templates. Mentioned implicitly in paper's mid-term section but not detailed. |
 | **Stereo support is legacy/non-primary** | `modules/stereo/*`, `system.h`, `system.cc` | Stereo utilities and evaluator wiring still exist in the codebase, but the active runtime entrypoint is monocular Andromeda (`apps/andromeda.cc`). | Important scope drift versus older docs; paper focus remains monocular. |
 | **LOST recovery bootstrap** | `tracking.cc` (`TrackImage`, `LostModeBootstrap`) | When tracked points drop below threshold, tracking enters `LOST` and attempts monocular re-bootstrap with frame stride and grace-period thresholds. | **Major practical extension.** Provides recovery behavior not specified in the paper. |
+| **External camera-pose ingestion** | `apps/andromeda.cc` (`/robot/state` decode + cache), `system.cc` / `tracking.cc` / `mapping.cc` (`TrackImage(..., external_pose)`) | Runtime can consume robot-state pose (`base_cam`) and pass it to the SLAM pipeline as an optional reference per frame. | Enables online pose-comparison diagnostics against an external source; not part of paper formulation. |
+| **One-time world-frame alignment to external pose** | `system.cc` (`world_aligned_to_external_`, `RebaseWorldFrame`) | On first frame with both SLAM and external pose available, map/world frame is rebased to align with the external base frame. | Practical integration feature for evaluation/deployment; not described in paper. |
+| **Pose comparison telemetry CSV** | `system.cc` (`pose_comparison.csv`, `[POSE_CMP_*]` logs) | Per-frame translation and rotation error are logged to text output and CSV when external pose is available. | Improves observability and benchmarking; not documented in paper. |
 
 ---
 
@@ -630,13 +645,15 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 
 3. **Missing DBA KeyFrame pose fixation:** In `LocalDeformableBundleAdjustment()`, no keyframe pose is explicitly fixed (`setFixed(true)` is never called on camera vertices). The system relies on g2o's gauge freedom handling, which may lead to gauge drift. Standard practice would fix the oldest keyframe.
 
-4. **Duplicate code pattern:** KLT parameter defaults are defined in at least 6 separate locations (`tracking.cc`, `monocular_map_initializer.h`, `stereo_lucas_kanade.h`, `system.cc`, `matching/lucas_kanade_tracker.h`) with slightly different values. This creates maintenance risk.
+4. **Parameter centralization improved, but thresholds still mixed:** Most KLT/initializer defaults are now centralized in `Settings` and overridden by YAML. Some tracking-time thresholds remain hardcoded by context (for example point-reuse SSIM/reprojection checks), so behavior can still diverge across stages.
 
 5. **Recovery exists but loop closure still absent:** Tracking no longer hard-exits on low support; it enters LOST and attempts monocular bootstrap recovery. However, true relocalization/loop-closure remains absent.
 
 6. **3-DOF chi² threshold inconsistency:** The 3-DOF threshold for tracking spatial regularizers is 0.584 (very tight, roughly 10% confidence), while for deformable triangulation it's 7.815 (standard 95% confidence). The tracking threshold is unusually strict and may cause over-rejection of valid spatial constraints.
 
 7. **Variable naming:** `dumper_edges` in DBA (line 988) appears to be a misspelling of "damper_edges" (viscous damper).
+
+8. **External-pose timing sensitivity:** Pose comparison and optional world alignment assume the cached `/robot/state` pose is suitable for the current image timestamp. Large topic timestamp skew could bias comparison metrics.
 
 ---
 
@@ -666,7 +683,7 @@ ROS/ament Python bootstrap issue seen while configuring `cpp_bag_reader`.
 
 ---
 
-## Step 6: How to Read the Code If You Read the Paper
+## Step 5: How to Read the Code If You Read the Paper
 
 This guide is written for a roboticist who has read (or is reading) the NR-SLAM paper and wants to navigate the implementation. It maps the paper's narrative flow onto concrete files and functions.
 
@@ -687,6 +704,11 @@ Begin with these three files, in order:
 ### 6.2 The Per-Frame Data Flow
 
 Every frame follows the same path through the system. This diagram traces a single call to `System::TrackImage()`:
+
+In the active Andromeda runtime path, `apps/andromeda.cc` may call
+`System::TrackImage(image, external_pose)` using decoded `/robot/state`
+messages. When present, external pose is used for pose-comparison telemetry
+and one-time world-frame alignment in `system.cc`.
 
 ```
   Image
